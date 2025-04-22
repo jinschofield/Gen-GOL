@@ -74,6 +74,22 @@ def main():
     with open(os.path.join(args.out_dir, 'metrics.txt'), 'w') as f:
         for k, v in results.items():
             f.write(f"{k}: {v}\n")
+    # Random baseline for comparison
+    # generate random samples
+    rand_samples = torch.rand_like(samples)
+    rand_samples = torch.clamp(rand_samples, 0.0, 1.0)
+    rand_bin = (rand_samples > threshold).float()
+    # save random grid
+    save_grid(rand_bin.cpu().numpy(), os.path.join(args.out_dir, 'random_samples.png'))
+    # evaluate random baseline
+    rand_results = evaluate_samples(rand_samples, train_patterns)
+    print("\nRandom baseline results:")
+    for k, v in rand_results.items():
+        print(f"{k}: {v}")
+    # save random metrics
+    with open(os.path.join(args.out_dir, 'random_metrics.txt'), 'w') as f:
+        for k, v in rand_results.items():
+            f.write(f"{k}: {v}\n")
 
 if __name__ == '__main__':
     main()
