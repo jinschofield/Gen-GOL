@@ -39,7 +39,10 @@ def main():
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--num_samples', type=int, default=64)
     parser.add_argument('--out_dir', type=str, default='./eval_outputs')
+    parser.add_argument('--threshold', type=float, default=0.5, help='binary threshold for sample activation')
     args = parser.parse_args()
+
+    threshold = args.threshold
 
     os.makedirs(args.out_dir, exist_ok=True)
     # load train patterns for novelty
@@ -58,8 +61,8 @@ def main():
         samples = diffusion.sample(model, (args.num_samples,1,H,H))
     # clamp outputs to [0,1] for meaningful thresholding
     samples = torch.clamp(samples, 0.0, 1.0)
-    # binarize (alive if >0.5)
-    bin_samples = (samples > 0.5).float()
+    # binarize using specified threshold
+    bin_samples = (samples > threshold).float()
     # save grid
     save_grid(bin_samples.cpu().numpy(), os.path.join(args.out_dir, 'samples.png'))
     # evaluate
