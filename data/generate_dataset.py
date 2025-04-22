@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import argparse
 from utils.gol_simulator import simulate
+import shutil
 
 def main():
     parser = argparse.ArgumentParser(description='Generate GOL patterns for survive and die')
@@ -20,6 +21,16 @@ def main():
 
     survive_dir = os.path.join(args.data_dir, 'survive')
     die_dir = os.path.join(args.data_dir, 'die')
+    # clear old datasets if they exist
+    if os.path.exists(survive_dir):
+        shutil.rmtree(survive_dir)
+    if os.path.exists(die_dir):
+        shutil.rmtree(die_dir)
+    # remove leftover .npy files at top-level data_dir
+    for fname in os.listdir(args.data_dir):
+        fp = os.path.join(args.data_dir, fname)
+        if os.path.isfile(fp) and fname.lower().endswith('.npy'):
+            os.remove(fp)
     os.makedirs(survive_dir, exist_ok=True)
     os.makedirs(die_dir, exist_ok=True)
 

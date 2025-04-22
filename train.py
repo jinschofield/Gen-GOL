@@ -7,6 +7,7 @@ from models.diffusion import Diffusion
 import argparse
 import copy
 from torch.nn.utils import clip_grad_norm_
+import random
 
 def main():
     parser = argparse.ArgumentParser()
@@ -26,6 +27,7 @@ def main():
     parser.add_argument('--lr_scheduler', type=str, default='none', choices=['none','cosine'], help='learning rate scheduler')
     parser.add_argument('--ema_decay', type=float, default=0.995, help='EMA decay for model weights')
     parser.add_argument('--noise_prob', type=float, default=0.0, help='probability of random cell flips as data augmentation')
+    parser.add_argument('--cf_prob', type=float, default=0.1, help='probability to drop conditioning (classifier-free)')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
@@ -69,8 +71,13 @@ def main():
             optimizer.zero_grad()
             x = x.to(args.device)
             c = c.to(args.device)
+            # classifier-free guidance: randomly drop conditioning
+            if random.random() < args.cf_prob:
+                c_input = None
+            else:
+                c_input = c
             t = torch.randint(0, diffusion.timesteps, (x.size(0),), device=args.device).long()
-            loss = diffusion.p_losses(model, x, t, c)
+            loss = diffusion.p_losses(model, x, t, c_input)
             loss.backward()
             # gradient clipping
             if args.grad_clip > 0:

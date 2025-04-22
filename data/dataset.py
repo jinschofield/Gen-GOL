@@ -6,6 +6,12 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from utils.gol_simulator import simulate
+import warnings
+try:
+    from utils.metrics import detect_period
+except ImportError:
+    detect_period = None
 
 class GolDataset(Dataset):
     def __init__(self, data_dir, augment=True, max_translation=None, noise_prob=0.0):
@@ -17,25 +23,26 @@ class GolDataset(Dataset):
             noise_prob (float, optional): probability of random cell flips as augmentation
         """
         self.data_dir = data_dir
-        # detect class subdirectories for conditional labels
-        raw_dirs = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
-        class_dirs = [d for d in raw_dirs if any(f.lower().endswith('.npy') for f in os.listdir(os.path.join(data_dir, d)))]
-        self.paths = []
-        if class_dirs:
-            class_dirs = sorted(class_dirs)
-            for label, class_name in enumerate(class_dirs):
-                class_folder = os.path.join(data_dir, class_name)
-                for f in os.listdir(class_folder):
-                    if f.lower().endswith('.npy'):
-                        self.paths.append((os.path.join(class_folder, f), label))
-        else:
-            # flat directory: treat all as one class (survive=1)
-            for f in os.listdir(data_dir):
+        # collect all .npy paths
+        all_files = []
+        for root, _, files in os.walk(data_dir):
+            for f in files:
                 if f.lower().endswith('.npy'):
-                    self.paths.append((os.path.join(data_dir, f), 1))
-        if not self.paths:
+                    all_files.append(os.path.join(root, f))
+        if not all_files:
             raise ValueError(f"No .npy files found in {data_dir}")
-        sample = np.load(self.paths[0][0])
+        # auto-label by simulation: 0=die, 1=survive
+        self.paths = []
+        self.labels = []
+        for p in all_files:
+            arr = np.load(p).astype(np.uint8)
+            # run a short simulation to decide
+            # label based on simulation outcome after 200 steps (match evaluation horizon)
+            hist = simulate(arr, steps=200)
+            lbl = 1 if hist and hist[-1].sum() > 0 else 0
+            self.paths.append(p)
+            self.labels.append(lbl)
+        sample = np.load(self.paths[0])
         if sample.ndim != 2:
             raise ValueError("Expected 2D arrays")
         self.size = sample.shape[0]
@@ -48,11 +55,12 @@ class GolDataset(Dataset):
         return len(self.paths)
 
     def __getitem__(self, idx):
-        path, label = self.paths[idx]
+        path = self.paths[idx]
         arr = np.load(path)
         if self.augment:
             arr = self._apply_augment(arr)
         tensor = torch.from_numpy(arr).float().unsqueeze(0)  # (1, H, W)
+        label = self.labels[idx]
         return tensor, torch.tensor(label, dtype=torch.long)
 
     def _apply_augment(self, arr):

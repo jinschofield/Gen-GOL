@@ -35,14 +35,25 @@ class ResidualBlock(nn.Module):
             nn.Linear(time_emb_dim, out_channels)
         )
         self.res_conv = nn.Identity() if in_channels == out_channels else nn.Conv2d(in_channels, out_channels, 1)
+        # FiLM layers for conditional scaling/shifting
+        self.film1 = nn.Linear(time_emb_dim, in_channels * 2)
+        self.film2 = nn.Linear(time_emb_dim, out_channels * 2)
 
     def forward(self, x, t):
+        # first normalization + FiLM
         h = self.norm1(x)
+        film1 = self.film1(t)
+        gamma1, beta1 = film1.chunk(2, dim=1)
+        h = h * (1 + gamma1.unsqueeze(-1).unsqueeze(-1)) + beta1.unsqueeze(-1).unsqueeze(-1)
         h = F.silu(h)
         h = self.conv1(h)
         time_emb = self.time_mlp(t).unsqueeze(-1).unsqueeze(-1)
         h = h + time_emb
+        # second normalization + FiLM
         h = self.norm2(h)
+        film2 = self.film2(t)
+        gamma2, beta2 = film2.chunk(2, dim=1)
+        h = h * (1 + gamma2.unsqueeze(-1).unsqueeze(-1)) + beta2.unsqueeze(-1).unsqueeze(-1)
         h = F.silu(h)
         h = self.conv2(h)
         return h + self.res_conv(x)
