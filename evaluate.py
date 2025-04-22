@@ -47,6 +47,9 @@ def main():
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--num_samples', type=int, default=64)
     parser.add_argument('--out_dir', type=str, default='./eval_outputs')
+    parser.add_argument('--schedule', type=str, default='linear', choices=['linear','cosine'], help='noise schedule')
+    parser.add_argument('--sample_method', type=str, default='ancestral', choices=['ancestral','ddim'], help='sampling method')
+    parser.add_argument('--eta', type=float, default=0.0, help='eta for ddim sampling')
     parser.add_argument('--threshold', type=float, default=0.5, help='binary threshold for sample activation')
     args = parser.parse_args()
 
@@ -62,11 +65,14 @@ def main():
     state = torch.load(args.checkpoint, map_location=args.device)
     model.load_state_dict(state)
     model.eval()
-    # diffusion
-    diffusion = Diffusion(timesteps=args.timesteps, device=args.device)
+    # diffusion with chosen noise schedule
+    diffusion = Diffusion(timesteps=args.timesteps, device=args.device, schedule=args.schedule)
     # sample
     with torch.no_grad():
-        samples = diffusion.sample(model, (args.num_samples,1,H,H))
+        if args.sample_method == 'ancestral':
+            samples = diffusion.sample(model, (args.num_samples,1,H,H))
+        else:
+            samples = diffusion.ddim_sample(model, (args.num_samples,1,H,H), eta=args.eta)
     # clamp outputs to [0,1] for meaningful thresholding
     samples = torch.clamp(samples, 0.0, 1.0)
     # binarize using specified threshold

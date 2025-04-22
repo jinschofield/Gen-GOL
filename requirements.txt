@@ -2,3 +2,4 @@ torch>=1.12.0
 numpy
 matplotlib
 tqdm
+torchmetrics>=0.11.0

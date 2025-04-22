@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--live_weight', type=float, default=1.0, help='weight multiplier for live-cell loss')
     parser.add_argument('--schedule', type=str, default='linear', choices=['linear','cosine'], help='noise schedule')
+    parser.add_argument('--ssim_weight', type=float, default=1.0, help='weight multiplier for SSIM loss')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
@@ -25,8 +26,9 @@ def main():
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     model = UNet().to(args.device)
-    # use live_weight to emphasize live-cell denoising
-    diffusion = Diffusion(timesteps=args.timesteps, device=args.device, live_weight=args.live_weight, schedule=args.schedule)
+    diffusion = Diffusion(timesteps=args.timesteps, device=args.device,
+                          live_weight=args.live_weight, schedule=args.schedule,
+                          ssim_weight=args.ssim_weight)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
     step = 0

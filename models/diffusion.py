@@ -1,13 +1,15 @@
 import torch
 import torch.nn.functional as F
 from typing import Optional
+from torchmetrics.functional import structural_similarity_index_measure
 
 class Diffusion:
     def __init__(self, timesteps=300, beta_start=1e-4, beta_end=0.02,
-                 device='cpu', live_weight=1.0, schedule: Optional[str]='linear'):
+                 device='cpu', live_weight=1.0, schedule: Optional[str]='linear', ssim_weight: float=1.0):
         """
         Args:
             live_weight: weight multiplier for loss on live cells (>1 to emphasize alive transitions)
+            ssim_weight: weight multiplier for structural SSIM loss
         """
         self.timesteps = timesteps
         self.device = device
@@ -24,6 +26,8 @@ class Diffusion:
         self.posterior_variance = self.betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
         # loss weight for live cells
         self.live_weight = live_weight
+        # structural SSIM loss weight
+        self.ssim_weight = ssim_weight
         self.schedule = schedule
 
     @staticmethod
@@ -60,7 +64,16 @@ class Diffusion:
             mask = (x_start > 0.5).float()
             w = 1 + (self.live_weight - 1) * mask
             loss = loss * w
-        return loss.mean()
+        loss = loss.mean()
+        # add structural SSIM loss on reconstructed x0
+        if self.ssim_weight > 0:
+            sqrt_acp = self.sqrt_alphas_cumprod[t].view(-1,1,1,1)
+            sqrt_om_acp = self.sqrt_one_minus_alphas_cumprod[t].view(-1,1,1,1)
+            x0_pred = (x_noisy - sqrt_om_acp * pred_noise) / sqrt_acp
+            ssim_val = structural_similarity_index_measure(x0_pred, x_start, data_range=1.0)
+            ssim_loss = torch.mean(1.0 - ssim_val)
+            loss = loss + self.ssim_weight * ssim_loss
+        return loss
 
     @torch.no_grad()
     def p_sample(self, model, x, t):
@@ -81,4 +94,24 @@ class Diffusion:
         for i in reversed(range(self.timesteps)):
             t = torch.full((shape[0],), i, device=self.device, dtype=torch.long)
             x = self.p_sample(model, x, t)
+        return x
+
+    @torch.no_grad()
+    def ddim_sample(self, model, shape, eta: float = 0.0):
+        """Deterministic DDIM sampling (eta=0 for deterministic)."""
+        x = torch.randn(shape, device=self.device)
+        for i in reversed(range(self.timesteps)):
+            t = torch.full((shape[0],), i, device=self.device, dtype=torch.long)
+            eps = model(x, t)
+            alpha_t = self.alphas_cumprod[t].view(-1,1,1,1)
+            alpha_prev = self.alphas_cumprod_prev[t].view(-1,1,1,1)
+            sqrt_alpha_t = torch.sqrt(alpha_t)
+            sqrt_alpha_prev = torch.sqrt(alpha_prev)
+            sqrt_one_minus_alpha_t = torch.sqrt(1.0 - alpha_t)
+            # predict x0
+            x0_pred = (x - sqrt_one_minus_alpha_t * eps) / sqrt_alpha_t
+            if i > 0:
+                x = sqrt_alpha_prev * x0_pred + torch.sqrt(1.0 - alpha_prev) * eps
+            else:
+                x = x0_pred
         return x
