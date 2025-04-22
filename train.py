@@ -6,6 +6,7 @@ from models.unet import UNet
 from models.diffusion import Diffusion
 import argparse
 import copy
+from torch.nn.utils import clip_grad_norm_
 
 def main():
     parser = argparse.ArgumentParser()
@@ -21,6 +22,8 @@ def main():
     parser.add_argument('--ssim_weight', type=float, default=1.0, help='weight multiplier for SSIM loss')
     parser.add_argument('--bce_weight', type=float, default=0.0, help='weight multiplier for BCE loss on x0')
     parser.add_argument('--ramp_steps', type=int, default=0, help='steps over which to ramp SSIM/BCE weights from 0 to final')
+    parser.add_argument('--grad_clip', type=float, default=0.0, help='max norm for gradient clipping; 0 disables')
+    parser.add_argument('--lr_scheduler', type=str, default='none', choices=['none','cosine'], help='learning rate scheduler')
     parser.add_argument('--ema_decay', type=float, default=0.995, help='EMA decay for model weights')
     args = parser.parse_args()
 
@@ -40,6 +43,12 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     ema_decay = args.ema_decay
 
+    # setup learning rate scheduler if requested
+    scheduler = None
+    if args.lr_scheduler == 'cosine':
+        total_steps = args.epochs * len(dataloader)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=total_steps)
+
     step = 0
     for epoch in range(args.epochs):
         for batch in dataloader:
@@ -56,7 +65,13 @@ def main():
             t = torch.randint(0, diffusion.timesteps, (x.size(0),), device=args.device).long()
             loss = diffusion.p_losses(model, x, t)
             loss.backward()
+            # gradient clipping
+            if args.grad_clip > 0:
+                clip_grad_norm_(model.parameters(), args.grad_clip)
             optimizer.step()
+            # scheduler step
+            if scheduler is not None:
+                scheduler.step()
             # update EMA weights
             with torch.no_grad():
                 for ema_param, param in zip(ema_model.parameters(), model.parameters()):
