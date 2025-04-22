@@ -18,7 +18,8 @@ class GolDataset(Dataset):
         """
         self.data_dir = data_dir
         # detect class subdirectories for conditional labels
-        class_dirs = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
+        raw_dirs = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
+        class_dirs = [d for d in raw_dirs if any(f.lower().endswith('.npy') for f in os.listdir(os.path.join(data_dir, d)))]
         self.paths = []
         if class_dirs:
             class_dirs = sorted(class_dirs)
