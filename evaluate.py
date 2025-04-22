@@ -12,10 +12,11 @@ import argparse
 
 def load_train_patterns(data_dir):
     patterns = []
-    for fname in os.listdir(data_dir):
-        if fname.lower().endswith('.npy'):
-            arr = np.load(os.path.join(data_dir, fname))
-            patterns.append(arr.astype(np.uint8))
+    for root, _, files in os.walk(data_dir):
+        for fname in files:
+            if fname.lower().endswith('.npy'):
+                arr = np.load(os.path.join(root, fname))
+                patterns.append(arr.astype(np.uint8))
     return patterns
 
 
