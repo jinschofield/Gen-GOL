@@ -79,11 +79,9 @@ class UNet(nn.Module):
             # update prev_ch to current output channels
             prev_ch = ch
 
-        # Final
-        self.final_block = nn.Sequential(
-            ResidualBlock(prev_ch, prev_ch, time_emb_dim),
-            nn.Conv2d(prev_ch, in_channels, kernel_size=1)
-        )
+        # Final layers: a ResidualBlock then a 1x1 conv
+        self.final_res_block = ResidualBlock(prev_ch, prev_ch, time_emb_dim)
+        self.final_conv = nn.Conv2d(prev_ch, in_channels, kernel_size=1)
 
     def forward(self, x, t):
         # x: (B, C, H, W), t: (B,)
@@ -107,4 +105,6 @@ class UNet(nn.Module):
                 skip = skips.pop()
                 h = torch.cat([h, skip], dim=1)
                 h = layer(h, t_emb)
-        return self.final_block(h)
+        # apply final residual block with time embedding, then conv
+        h = self.final_res_block(h, t_emb)
+        return self.final_conv(h)
