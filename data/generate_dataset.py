@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--max_die', type=int, default=1000, help='number of die patterns to generate')
     parser.add_argument('--tries_mult', type=int, default=100, help='multiplier for max tries')
     parser.add_argument('--print_every', type=int, default=100, help='print progress every N tries')
+    parser.add_argument('--threshold', type=float, default=0.5, help='initial random fill threshold')
     args = parser.parse_args()
 
     survive_dir = os.path.join(args.data_dir, 'survive')
@@ -33,19 +34,17 @@ def main():
     tries = 0
 
     while (survive_count < max_survive or die_count < max_die) and tries < max_tries:
-        x0 = (np.random.rand(N, N) < 0.3).astype(np.uint8)
+        # initial random configuration using threshold
+        x0 = (np.random.rand(N, N) > args.threshold).astype(np.uint8)
         history = simulate(x0, steps=STEPS)
-        # survived full simulation?
-        if len(history) == STEPS:
-            rep_state = history[-1]
-            if rep_state.sum() > 0 and survive_count < max_survive:
-                np.save(os.path.join(survive_dir, f'pattern_{survive_count}.npy'), rep_state)
-                survive_count += 1
-        # died out early?
-        elif len(history) < STEPS:
-            if die_count < max_die:
-                np.save(os.path.join(die_dir, f'pattern_{die_count}.npy'), x0)
-                die_count += 1
+        rep_state = history[-1]
+        # classify by alive vs extinct
+        if rep_state.sum() > 0 and survive_count < max_survive:
+            np.save(os.path.join(survive_dir, f'pattern_{survive_count}.npy'), rep_state)
+            survive_count += 1
+        elif rep_state.sum() == 0 and die_count < max_die:
+            np.save(os.path.join(die_dir, f'pattern_{die_count}.npy'), x0)
+            die_count += 1
         tries += 1
         if tries % args.print_every == 0:
             print(f"Tries: {tries}, Survive: {survive_count}/{max_survive}, Die: {die_count}/{max_die}")
