@@ -60,7 +60,8 @@ def main():
     parser.add_argument('--class_label', type=int, default=1, choices=[0,1], help='0=die, 1=survive conditioning flag')
     parser.add_argument('--animate', action='store_true', help='animate a sample history')
     parser.add_argument('--anim_idx', type=int, default=0, help='sample index to animate')
-    parser.add_argument('--anim_steps', type=int, default=50, help='simulation steps for animation')
+    parser.add_argument('--anim_steps', type=int, default=None, help='simulation steps for animation (defaults to timesteps)')
+    parser.add_argument('--anim_last', type=int, default=None, help='only animate the last N frames of history')
     parser.add_argument('--baseline_model', type=str, default=None,
                         help='path to untrained model checkpoint for baseline comparison')
     args = parser.parse_args()
@@ -179,9 +180,17 @@ def main():
         if args.anim_idx >= total:
             print(f"anim_idx {args.anim_idx} out of range (0 to {total-1}), using {idx}")
         g = bin_samples[idx,0].cpu().numpy()
-        history = simulate(g, steps=args.anim_steps)
+        # determine simulation steps: anim_steps or full timesteps
+        sim_steps = args.anim_steps if args.anim_steps is not None else args.timesteps
+        full_history = simulate(g, steps=sim_steps)
+        # trim to last N frames if requested
+        if args.anim_last is not None:
+            n = min(args.anim_last, len(full_history))
+            history = full_history[-n:]
+        else:
+            history = full_history
         # print status of animated sample
-        if history[-1].sum() == 0:
+        if full_history[-1].sum() == 0:
             print(f"Animated sample {idx} died out")
         else:
             print(f"Animated sample {idx} survived")
