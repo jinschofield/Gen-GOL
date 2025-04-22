@@ -86,6 +86,15 @@ def main():
         cols = int(np.ceil(m / rows))
         save_grid(living_samples.cpu().numpy(), os.path.join(args.out_dir, 'living_samples.png'), rows, cols)
         print(f"Saved {m} living configurations to 'living_samples.png'")
+        # sample same number of died-out configs for comparison
+        died_idxs = [i for i in range(bin_samples.shape[0]) if i not in living_idxs]
+        if died_idxs:
+            # if fewer died than living, allow repeats
+            died_sel = np.random.choice(died_idxs, size=m, replace=len(died_idxs) < m)
+            died_samples = bin_samples[died_sel]
+            save_grid(died_samples.cpu().numpy(), os.path.join(args.out_dir, 'died_samples.png'), rows, cols)
+            print(f"Saved {m} died configurations to 'died_samples.png'")
+
     # save grid
     save_grid(bin_samples.cpu().numpy(), os.path.join(args.out_dir, 'samples.png'))
     # evaluate
