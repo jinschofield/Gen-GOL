@@ -18,16 +18,17 @@ def detect_period(history):
     return None
 
 
-def evaluate_samples(samples, train_patterns, max_steps=50):
+def evaluate_samples(samples, train_patterns, max_steps=50, threshold=0.5):
     """
     Args:
-        samples: torch.Tensor (N,1,H,W) continuous outputs; threshold at 0.5 for binarization.
+        samples: torch.Tensor (N,1,H,W) continuous outputs; threshold for binarization.
         train_patterns: list of np.ndarray (H,W) training grids for novelty check.
+        threshold: float, cutoff for binarization.
     Returns:
         dict with counts and novel fraction.
     """
     N = samples.shape[0]
-    grids = (samples.squeeze(1).cpu().numpy() > 0.5).astype(np.uint8)
+    grids = (samples.squeeze(1).cpu().numpy() > threshold).astype(np.uint8)
     results = defaultdict(int)
     novel = 0
     # Precompute train set variants
@@ -41,12 +42,17 @@ def evaluate_samples(samples, train_patterns, max_steps=50):
     for g in grids:
         hist = simulate(g, steps=max_steps)
         per = detect_period(hist)
-        if per is None:
+        # died out completely if final state sum is zero
+        if hist[-1].sum() == 0:
             results['died_out'] += 1
-        elif per == 1:
-            results['still_life'] += 1
         else:
-            results[f'oscillator_p{per}'] += 1
+            # classify survivors by period if detected
+            if per == 1:
+                results['still_life'] += 1
+            elif per and per > 1:
+                results[f'oscillator_p{per}'] += 1
+            else:
+                results['survived_unknown'] += 1
         # novelty
         if g.tobytes() not in train_set:
             novel += 1

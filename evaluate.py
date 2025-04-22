@@ -120,7 +120,7 @@ def main():
     # save grid
     save_grid(bin_samples.cpu().numpy(), os.path.join(args.out_dir, 'samples.png'))
     # evaluate
-    results = evaluate_samples(samples, train_patterns)
+    results = evaluate_samples(samples, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
     # print results
     for k, v in results.items():
         print(f"{k}: {v}")
@@ -136,7 +136,7 @@ def main():
     # save random grid
     save_grid(rand_bin.cpu().numpy(), os.path.join(args.out_dir, 'random_samples.png'))
     # evaluate random baseline
-    rand_results = evaluate_samples(rand_samples, train_patterns)
+    rand_results = evaluate_samples(rand_samples, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
     print("\nRandom baseline results:")
     for k, v in rand_results.items():
         print(f"{k}: {v}")
