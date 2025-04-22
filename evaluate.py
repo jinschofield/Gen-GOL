@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from models.unet import UNet
 from models.diffusion import Diffusion
 from utils.metrics import evaluate_samples, detect_period
@@ -52,6 +53,9 @@ def main():
     parser.add_argument('--eta', type=float, default=0.0, help='eta for ddim sampling')
     parser.add_argument('--threshold', type=float, default=0.5, help='binary threshold for sample activation')
     parser.add_argument('--class_label', type=int, default=1, choices=[0,1], help='0=die, 1=survive conditioning flag')
+    parser.add_argument('--animate', action='store_true', help='animate a sample history')
+    parser.add_argument('--anim_idx', type=int, default=0, help='sample index to animate')
+    parser.add_argument('--anim_steps', type=int, default=50, help='simulation steps for animation')
     args = parser.parse_args()
 
     threshold = args.threshold
@@ -133,6 +137,19 @@ def main():
     with open(os.path.join(args.out_dir, 'random_metrics.txt'), 'w') as f:
         for k, v in rand_results.items():
             f.write(f"{k}: {v}\n")
+
+    if args.animate:
+        g = bin_samples[args.anim_idx,0].cpu().numpy()
+        history = simulate(g, steps=args.anim_steps)
+        fig, ax = plt.subplots()
+        im = ax.imshow(history[0], cmap='gray_r', vmin=0, vmax=1)
+        def update(i):
+            im.set_data(history[i])
+            return [im]
+        anim = animation.FuncAnimation(fig, update, frames=len(history), interval=200, blit=True)
+        anim_path = os.path.join(args.out_dir, f'anim_{args.anim_idx}.gif')
+        anim.save(anim_path, writer='pillow', fps=5)
+        print(f"Saved animation: {anim_path}")
 
 if __name__ == '__main__':
     main()
