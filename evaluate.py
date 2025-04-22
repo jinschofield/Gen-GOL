@@ -23,6 +23,8 @@ def save_grid(samples, path, rows=4, cols=4):
     # samples: (N,1,H,W) binary
     N, _, H, W = samples.shape
     fig, axes = plt.subplots(rows, cols, figsize=(cols*2, rows*2))
+    # ensure axes is a 2D array for consistent indexing
+    axes = np.array(axes).reshape(rows, cols)
     for i in range(rows*cols):
         ax = axes[i//cols, i%cols]
         if i < N:
