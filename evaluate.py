@@ -19,7 +19,7 @@ def load_train_patterns(data_dir):
     return patterns
 
 
-def save_grid(samples, path, rows=4, cols=4):
+def save_grid(samples, path, rows=4, cols=4, labels=None):
     # samples: (N,1,H,W) binary
     N, _, H, W = samples.shape
     fig, axes = plt.subplots(rows, cols, figsize=(cols*2, rows*2))
@@ -37,6 +37,9 @@ def save_grid(samples, path, rows=4, cols=4):
             spine.set_visible(True)
             spine.set_edgecolor('black')
             spine.set_linewidth(1)
+        # annotate index label if provided
+        if labels is not None and i < len(labels):
+            ax.text(0.05, 0.9, str(labels[i]), color='red', fontsize=8, transform=ax.transAxes)
     plt.tight_layout()
     fig.savefig(path)
     plt.close(fig)
@@ -97,11 +100,12 @@ def main():
         if per is not None:
             living_idxs.append(i)
     if living_idxs:
+        print(f"Living sample indices: {living_idxs}")
         living_samples = bin_samples[living_idxs]
         m = len(living_idxs)
         rows = int(np.ceil(m ** 0.5))
         cols = int(np.ceil(m / rows))
-        save_grid(living_samples.cpu().numpy(), os.path.join(args.out_dir, 'living_samples.png'), rows, cols)
+        save_grid(living_samples.cpu().numpy(), os.path.join(args.out_dir, 'living_samples.png'), rows, cols, labels=living_idxs)
         print(f"Saved {m} living configurations to 'living_samples.png'")
         # sample same number of died-out configs for comparison
         died_idxs = [i for i in range(bin_samples.shape[0]) if i not in living_idxs]
@@ -109,7 +113,8 @@ def main():
             # if fewer died than living, allow repeats
             died_sel = np.random.choice(died_idxs, size=m, replace=len(died_idxs) < m)
             died_samples = bin_samples[died_sel]
-            save_grid(died_samples.cpu().numpy(), os.path.join(args.out_dir, 'died_samples.png'), rows, cols)
+            print(f"Died sample indices: {died_sel.tolist()}")
+            save_grid(died_samples.cpu().numpy(), os.path.join(args.out_dir, 'died_samples.png'), rows, cols, labels=died_sel)
             print(f"Saved {m} died configurations to 'died_samples.png'")
 
     # save grid
@@ -141,7 +146,11 @@ def main():
             f.write(f"{k}: {v}\n")
 
     if args.animate:
-        g = bin_samples[args.anim_idx,0].cpu().numpy()
+        total = bin_samples.shape[0]
+        idx = min(args.anim_idx, total-1)
+        if args.anim_idx >= total:
+            print(f"anim_idx {args.anim_idx} out of range (0 to {total-1}), using {idx}")
+        g = bin_samples[idx,0].cpu().numpy()
         history = simulate(g, steps=args.anim_steps)
         fig, ax = plt.subplots()
         im = ax.imshow(history[0], cmap='gray_r', vmin=0, vmax=1)
@@ -149,7 +158,7 @@ def main():
             im.set_data(history[i])
             return [im]
         anim = animation.FuncAnimation(fig, update, frames=len(history), interval=200, blit=True)
-        anim_path = os.path.join(args.out_dir, f'anim_{args.anim_idx}.gif')
+        anim_path = os.path.join(args.out_dir, f'anim_{idx}.gif')
         anim.save(anim_path, writer='pillow', fps=5)
         print(f"Saved animation: {anim_path}")
 
