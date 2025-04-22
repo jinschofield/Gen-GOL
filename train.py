@@ -34,6 +34,11 @@ def main():
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     model = UNet().to(args.device)
+    # save initial (untrained) model for baseline comparison
+    init_ckpt = os.path.join(args.save_dir, "model_init.pt")
+    torch.save(model.state_dict(), init_ckpt)
+    print(f"Saved initial untrained model to {init_ckpt}")
+
     # initialize EMA model
     ema_model = copy.deepcopy(model)
     for p in ema_model.parameters():

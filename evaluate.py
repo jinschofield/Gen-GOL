@@ -61,6 +61,8 @@ def main():
     parser.add_argument('--animate', action='store_true', help='animate a sample history')
     parser.add_argument('--anim_idx', type=int, default=0, help='sample index to animate')
     parser.add_argument('--anim_steps', type=int, default=50, help='simulation steps for animation')
+    parser.add_argument('--baseline_model', type=str, default=None,
+                        help='path to untrained model checkpoint for baseline comparison')
     args = parser.parse_args()
 
     threshold = args.threshold
@@ -128,6 +130,28 @@ def main():
     with open(os.path.join(args.out_dir, 'metrics.txt'), 'w') as f:
         for k, v in results.items():
             f.write(f"{k}: {v}\n")
+
+    # evaluate untrained baseline if provided
+    if args.baseline_model:
+        base_model = UNet(in_channels=1, base_channels=64, channel_mults=(1,2,4)).to(args.device)
+        base_state = torch.load(args.baseline_model, map_location=args.device)
+        base_model.load_state_dict(base_state)
+        base_model.eval()
+        with torch.no_grad():
+            if args.sample_method == 'ancestral':
+                base_samples = diffusion.sample(base_model, shape, c)
+            else:
+                base_samples = diffusion.ddim_sample(base_model, shape, eta=args.eta, c=c)
+        base_samples = torch.clamp(base_samples, 0.0, 1.0)
+        base_results = evaluate_samples(base_samples, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
+        print("\nBaseline (untrained) results:")
+        for k, v in base_results.items():
+            print(f"{k}: {v}")
+        # save baseline metrics
+        with open(os.path.join(args.out_dir, 'baseline_metrics.txt'), 'w') as f:
+            for k, v in base_results.items():
+                f.write(f"{k}: {v}\n")
+
     # Random baseline for comparison
     # generate random samples
     rand_samples = torch.rand_like(samples)
