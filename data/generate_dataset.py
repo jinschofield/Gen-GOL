@@ -12,8 +12,8 @@ def main():
     parser.add_argument('--data_dir', type=str, default=os.path.dirname(__file__),
                         help='base directory to create survive and die subfolders')
     parser.add_argument('--steps', type=int, default=200, help='simulation steps per pattern')
-    parser.add_argument('--max_survive', type=int, default=1000, help='number of survive patterns to generate')
-    parser.add_argument('--max_die', type=int, default=1000, help='number of die patterns to generate')
+    parser.add_argument('--max_survive', type=int, default=5000, help='number of survive patterns to generate (5× default)')
+    parser.add_argument('--max_die', type=int, default=5000, help='number of die patterns to generate (5× default)')
     parser.add_argument('--tries_mult', type=int, default=100, help='multiplier for max tries')
     parser.add_argument('--print_every', type=int, default=100, help='print progress every N tries')
     parser.add_argument('--threshold', type=float, default=0.5, help='initial random fill threshold')
