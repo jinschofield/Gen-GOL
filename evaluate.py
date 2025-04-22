@@ -26,7 +26,14 @@ def save_grid(samples, path, rows=4, cols=4):
         ax = axes[i//cols, i%cols]
         if i < N:
             ax.imshow(samples[i,0], cmap='gray_r', vmin=0, vmax=1)
-        ax.axis('off')
+        # remove ticks but keep frame for border
+        ax.set_xticks([])
+        ax.set_yticks([])
+        # add border around each sample
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1)
     plt.tight_layout()
     fig.savefig(path)
     plt.close(fig)
