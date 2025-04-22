@@ -70,23 +70,20 @@ class Diffusion:
             w = 1 + (self.live_weight - 1) * mask
             loss = loss * w
         loss = loss.mean()
-        # add structural SSIM loss on reconstructed x0
-        if self.ssim_weight > 0:
+        # reconstruct x0_pred for SSIM/BCE if needed
+        if self.ssim_weight > 0 or self.bce_weight > 0:
             sqrt_acp = self.sqrt_alphas_cumprod[t].view(-1,1,1,1)
             sqrt_om_acp = self.sqrt_one_minus_alphas_cumprod[t].view(-1,1,1,1)
             x0_pred = (x_noisy - sqrt_om_acp * pred_noise) / sqrt_acp
+        # add structural SSIM loss on reconstructed x0
+        if self.ssim_weight > 0:
             ssim_val = structural_similarity_index_measure(x0_pred, x_start, data_range=1.0)
             ssim_loss = torch.mean(1.0 - ssim_val)
             loss = loss + self.ssim_weight * ssim_loss
         # add BCE loss on x0 if requested
         if self.bce_weight > 0:
-            try:
-                # clamp x0 to [0,1]
-                x0_clamped = x0_pred.clamp(0.0, 1.0)
-                bce = F.binary_cross_entropy(x0_clamped, x_start)
-                loss = loss + self.bce_weight * bce
-            except Exception as e:
-                warnings.warn(f"BCE loss computation failed: {e}")
+            bce = F.binary_cross_entropy(x0_pred.clamp(0.0,1.0), x_start)
+            loss = loss + self.bce_weight * bce
         return loss
 
     @torch.no_grad()
