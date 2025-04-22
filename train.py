@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--timesteps', type=int, default=300)
     parser.add_argument('--save_dir', type=str, default='./checkpoints')
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--live_weight', type=float, default=1.0, help='weight multiplier for live-cell loss')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
@@ -23,7 +24,8 @@ def main():
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     model = UNet().to(args.device)
-    diffusion = Diffusion(timesteps=args.timesteps, device=args.device)
+    # use live_weight to emphasize live-cell denoising
+    diffusion = Diffusion(timesteps=args.timesteps, device=args.device, live_weight=args.live_weight)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
     step = 0
