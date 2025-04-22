@@ -69,11 +69,14 @@ class UNet(nn.Module):
         # Bottleneck
         self.bottleneck = ResidualBlock(prev_ch, prev_ch, time_emb_dim)
 
-        # Upsampling
+        # Upsampling path
         self.ups = nn.ModuleList()
         for ch in reversed(channels):
+            # upsample from prev_ch to ch channels
             self.ups.append(nn.ConvTranspose2d(prev_ch, ch, kernel_size=4, stride=2, padding=1))
-            self.ups.append(ResidualBlock(prev_ch + ch, ch, time_emb_dim))
+            # after upsample, feature maps have `ch` channels; skip connection has `ch` channels -> total 2*ch
+            self.ups.append(ResidualBlock(ch * 2, ch, time_emb_dim))
+            # update prev_ch to current output channels
             prev_ch = ch
 
         # Final
