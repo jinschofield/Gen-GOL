@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--live_weight', type=float, default=1.0, help='weight multiplier for live-cell loss')
     parser.add_argument('--schedule', type=str, default='linear', choices=['linear','cosine'], help='noise schedule')
     parser.add_argument('--ssim_weight', type=float, default=1.0, help='weight multiplier for SSIM loss')
+    parser.add_argument('--bce_weight', type=float, default=0.0, help='weight multiplier for BCE loss on x0')
     parser.add_argument('--ema_decay', type=float, default=0.995, help='EMA decay for model weights')
     args = parser.parse_args()
 
@@ -34,7 +35,7 @@ def main():
         p.requires_grad_(False)
     diffusion = Diffusion(timesteps=args.timesteps, device=args.device,
                           live_weight=args.live_weight, schedule=args.schedule,
-                          ssim_weight=args.ssim_weight)
+                          ssim_weight=args.ssim_weight, bce_weight=args.bce_weight)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     ema_decay = args.ema_decay
 

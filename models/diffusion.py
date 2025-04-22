@@ -2,14 +2,17 @@ import torch
 import torch.nn.functional as F
 from typing import Optional
 from torchmetrics.functional import structural_similarity_index_measure
+import warnings
 
 class Diffusion:
     def __init__(self, timesteps=300, beta_start=1e-4, beta_end=0.02,
-                 device='cpu', live_weight=1.0, schedule: Optional[str]='linear', ssim_weight: float=1.0):
+                 device='cpu', live_weight=1.0, schedule: Optional[str]='linear',
+                 ssim_weight: float=0.0, bce_weight: float=0.0):
         """
         Args:
             live_weight: weight multiplier for loss on live cells (>1 to emphasize alive transitions)
             ssim_weight: weight multiplier for structural SSIM loss
+            bce_weight: weight multiplier for binary cross-entropy loss on x0
         """
         self.timesteps = timesteps
         self.device = device
@@ -28,6 +31,8 @@ class Diffusion:
         self.live_weight = live_weight
         # structural SSIM loss weight
         self.ssim_weight = ssim_weight
+        # binary cross-entropy loss weight on x0 reconstruction
+        self.bce_weight = bce_weight
         self.schedule = schedule
 
     @staticmethod
@@ -73,6 +78,15 @@ class Diffusion:
             ssim_val = structural_similarity_index_measure(x0_pred, x_start, data_range=1.0)
             ssim_loss = torch.mean(1.0 - ssim_val)
             loss = loss + self.ssim_weight * ssim_loss
+        # add BCE loss on x0 if requested
+        if self.bce_weight > 0:
+            try:
+                # clamp x0 to [0,1]
+                x0_clamped = x0_pred.clamp(0.0, 1.0)
+                bce = F.binary_cross_entropy(x0_clamped, x_start)
+                loss = loss + self.bce_weight * bce
+            except Exception as e:
+                warnings.warn(f"BCE loss computation failed: {e}")
         return loss
 
     @torch.no_grad()
