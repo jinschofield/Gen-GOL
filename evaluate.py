@@ -132,6 +132,23 @@ def main():
         for k, v in results.items():
             f.write(f"{k}: {v}\n")
 
+    # evaluate trained model without condition
+    with torch.no_grad():
+        if args.sample_method == 'ancestral':
+            samples_nc = diffusion.sample(model, shape, c=None)
+        else:
+            samples_nc = diffusion.ddim_sample(model, shape, eta=args.eta, c=None)
+    samples_nc = torch.clamp(samples_nc, 0.0, 1.0)
+    bin_nc = (samples_nc > threshold).float()
+    save_grid(bin_nc.cpu().numpy(), os.path.join(args.out_dir, 'samples_no_cond.png'))
+    results_nc = evaluate_samples(samples_nc, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
+    print("\nTrained model no-condition results:")
+    for k, v in results_nc.items():
+        print(f"{k}: {v}")
+    with open(os.path.join(args.out_dir, 'metrics_no_cond.txt'), 'w') as f:
+        for k, v in results_nc.items():
+            f.write(f"{k}: {v}\n")
+
     # evaluate untrained baseline if provided
     if args.baseline_model:
         # skip if checkpoint not found
@@ -155,6 +172,23 @@ def main():
             # save baseline metrics
             with open(os.path.join(args.out_dir, 'baseline_metrics.txt'), 'w') as f:
                 for k, v in base_results.items():
+                    f.write(f"{k}: {v}\n")
+
+            # evaluate untrained model without condition
+            with torch.no_grad():
+                if args.sample_method == 'ancestral':
+                    base_nc = diffusion.sample(base_model, shape, c=None)
+                else:
+                    base_nc = diffusion.ddim_sample(base_model, shape, eta=args.eta, c=None)
+            base_nc = torch.clamp(base_nc, 0.0, 1.0)
+            bin_base_nc = (base_nc > threshold).float()
+            save_grid(bin_base_nc.cpu().numpy(), os.path.join(args.out_dir, 'baseline_samples_no_cond.png'))
+            base_results_nc = evaluate_samples(base_nc, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
+            print("\nBaseline untrained model no-condition results:")
+            for k, v in base_results_nc.items():
+                print(f"{k}: {v}")
+            with open(os.path.join(args.out_dir, 'baseline_metrics_no_cond.txt'), 'w') as f:
+                for k, v in base_results_nc.items():
                     f.write(f"{k}: {v}\n")
 
     # Random baseline for comparison
