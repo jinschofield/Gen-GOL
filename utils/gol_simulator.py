@@ -16,15 +16,12 @@ def step(grid):
     return (birth | survive).astype(np.uint8)
 
 def simulate(grid, steps=50):
-    """Simulate for given steps or until repetition. Returns history."""
-    seen = set()
+    """Simulate for up to given steps or until extinction. Returns history."""
     history = []
     g = grid.copy()
     for _ in range(steps):
-        key = g.tobytes()
-        if key in seen:
-            break
-        seen.add(key)
         history.append(g.copy())
+        if g.sum() == 0:
+            break
         g = step(g)
     return history
