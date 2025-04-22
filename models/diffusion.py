@@ -1,15 +1,21 @@
 import torch
 import torch.nn.functional as F
+from typing import Optional
 
 class Diffusion:
-    def __init__(self, timesteps=300, beta_start=1e-4, beta_end=0.02, device='cpu', live_weight=1.0):
+    def __init__(self, timesteps=300, beta_start=1e-4, beta_end=0.02,
+                 device='cpu', live_weight=1.0, schedule: Optional[str]='linear'):
         """
         Args:
             live_weight: weight multiplier for loss on live cells (>1 to emphasize alive transitions)
         """
         self.timesteps = timesteps
         self.device = device
-        self.betas = torch.linspace(beta_start, beta_end, timesteps, device=device)
+        # choose noise schedule: 'linear' or 'cosine'
+        if schedule == 'cosine':
+            self.betas = self.cosine_beta_schedule(timesteps, device)
+        else:
+            self.betas = torch.linspace(beta_start, beta_end, timesteps, device=device)
         self.alphas = 1.0 - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
         self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1], (1,0), value=1.0)
@@ -18,6 +24,21 @@ class Diffusion:
         self.posterior_variance = self.betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
         # loss weight for live cells
         self.live_weight = live_weight
+        self.schedule = schedule
+
+    @staticmethod
+    def cosine_beta_schedule(timesteps: int, device: str='cpu', s: float=0.008):
+        # cosine schedule as in Nichol & Dhariwal
+        steps = timesteps
+        t = torch.linspace(0, steps, steps+1, device=device) / steps
+        alphas_cumprod = torch.cos(((t + s)/(1 + s)) * torch.pi/2) ** 2
+        alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
+        betas = []
+        for i in range(1, len(alphas_cumprod)):
+            prev = alphas_cumprod[i-1]
+            beta = min(1 - alphas_cumprod[i]/prev, 0.999)
+            betas.append(beta)
+        return torch.tensor(betas, dtype=torch.float32, device=device)
 
     def q_sample(self, x_start, t, noise=None):
         if noise is None:
