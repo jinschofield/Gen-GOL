@@ -152,6 +152,11 @@ def main():
             print(f"anim_idx {args.anim_idx} out of range (0 to {total-1}), using {idx}")
         g = bin_samples[idx,0].cpu().numpy()
         history = simulate(g, steps=args.anim_steps)
+        # print status of animated sample
+        if history[-1].sum() == 0:
+            print(f"Animated sample {idx} died out")
+        else:
+            print(f"Animated sample {idx} survived")
         fig, ax = plt.subplots()
         im = ax.imshow(history[0], cmap='gray_r', vmin=0, vmax=1)
         def update(i):
