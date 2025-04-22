@@ -4,7 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from models.unet import UNet
 from models.diffusion import Diffusion
-from utils.metrics import evaluate_samples
+from utils.metrics import evaluate_samples, detect_period
+from utils.gol_simulator import simulate
 import argparse
 
 
@@ -63,6 +64,21 @@ def main():
     samples = torch.clamp(samples, 0.0, 1.0)
     # binarize using specified threshold
     bin_samples = (samples > threshold).float()
+    # visualize living configurations
+    living_idxs = []
+    for i in range(bin_samples.shape[0]):
+        g = bin_samples[i,0].cpu().numpy().astype(np.uint8)
+        hist = simulate(g, steps=args.timesteps)
+        per = detect_period(hist)
+        if per is not None:
+            living_idxs.append(i)
+    if living_idxs:
+        living_samples = bin_samples[living_idxs]
+        m = len(living_idxs)
+        rows = int(np.ceil(m ** 0.5))
+        cols = int(np.ceil(m / rows))
+        save_grid(living_samples.cpu().numpy(), os.path.join(args.out_dir, 'living_samples.png'), rows, cols)
+        print(f"Saved {m} living configurations to 'living_samples.png'")
     # save grid
     save_grid(bin_samples.cpu().numpy(), os.path.join(args.out_dir, 'samples.png'))
     # evaluate
