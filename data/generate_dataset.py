@@ -35,14 +35,15 @@ def main():
     while (survive_count < max_survive or die_count < max_die) and tries < max_tries:
         x0 = (np.random.rand(N, N) < 0.3).astype(np.uint8)
         history = simulate(x0, steps=STEPS)
-        if len(history) < STEPS:
+        # survived full simulation?
+        if len(history) == STEPS:
             rep_state = history[-1]
-            # alive oscillator patterns
             if rep_state.sum() > 0 and survive_count < max_survive:
                 np.save(os.path.join(survive_dir, f'pattern_{survive_count}.npy'), rep_state)
                 survive_count += 1
-            # dying patterns (cells died out)
-            elif rep_state.sum() == 0 and die_count < max_die:
+        # died out early?
+        elif len(history) < STEPS:
+            if die_count < max_die:
                 np.save(os.path.join(die_dir, f'pattern_{die_count}.npy'), x0)
                 die_count += 1
         tries += 1
