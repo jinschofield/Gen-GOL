@@ -51,6 +51,7 @@ def main():
     parser.add_argument('--sample_method', type=str, default='ancestral', choices=['ancestral','ddim'], help='sampling method')
     parser.add_argument('--eta', type=float, default=0.0, help='eta for ddim sampling')
     parser.add_argument('--threshold', type=float, default=0.5, help='binary threshold for sample activation')
+    parser.add_argument('--class_label', type=int, default=1, choices=[0,1], help='0=die, 1=survive conditioning flag')
     args = parser.parse_args()
 
     threshold = args.threshold
@@ -67,12 +68,16 @@ def main():
     model.eval()
     # diffusion with chosen noise schedule
     diffusion = Diffusion(timesteps=args.timesteps, device=args.device, schedule=args.schedule)
+    # build condition tensor
+    c = torch.full((args.num_samples,), args.class_label, device=args.device, dtype=torch.long)
     # sample
     with torch.no_grad():
+        # generate with conditional label
+        shape = (args.num_samples, 1, H, H)
         if args.sample_method == 'ancestral':
-            samples = diffusion.sample(model, (args.num_samples,1,H,H))
+            samples = diffusion.sample(model, shape, c)
         else:
-            samples = diffusion.ddim_sample(model, (args.num_samples,1,H,H), eta=args.eta)
+            samples = diffusion.ddim_sample(model, shape, eta=args.eta, c=c)
     # clamp outputs to [0,1] for meaningful thresholding
     samples = torch.clamp(samples, 0.0, 1.0)
     # binarize using specified threshold

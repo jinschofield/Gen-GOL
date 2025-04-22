@@ -17,13 +17,24 @@ class GolDataset(Dataset):
             noise_prob (float, optional): probability of random cell flips as augmentation
         """
         self.data_dir = data_dir
-        self.paths = [
-            os.path.join(data_dir, f) for f in os.listdir(data_dir)
-            if f.lower().endswith('.npy')
-        ]
-        if len(self.paths) == 0:
+        # detect class subdirectories for conditional labels
+        class_dirs = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
+        self.paths = []
+        if class_dirs:
+            class_dirs = sorted(class_dirs)
+            for label, class_name in enumerate(class_dirs):
+                class_folder = os.path.join(data_dir, class_name)
+                for f in os.listdir(class_folder):
+                    if f.lower().endswith('.npy'):
+                        self.paths.append((os.path.join(class_folder, f), label))
+        else:
+            # flat directory: treat all as one class (survive=1)
+            for f in os.listdir(data_dir):
+                if f.lower().endswith('.npy'):
+                    self.paths.append((os.path.join(data_dir, f), 1))
+        if not self.paths:
             raise ValueError(f"No .npy files found in {data_dir}")
-        sample = np.load(self.paths[0])
+        sample = np.load(self.paths[0][0])
         if sample.ndim != 2:
             raise ValueError("Expected 2D arrays")
         self.size = sample.shape[0]
@@ -36,11 +47,12 @@ class GolDataset(Dataset):
         return len(self.paths)
 
     def __getitem__(self, idx):
-        arr = np.load(self.paths[idx])
+        path, label = self.paths[idx]
+        arr = np.load(path)
         if self.augment:
             arr = self._apply_augment(arr)
         tensor = torch.from_numpy(arr).float().unsqueeze(0)  # (1, H, W)
-        return tensor
+        return tensor, torch.tensor(label, dtype=torch.long)
 
     def _apply_augment(self, arr):
         # Random rotation

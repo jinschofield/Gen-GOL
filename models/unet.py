@@ -56,6 +56,8 @@ class UNet(nn.Module):
             nn.SiLU(),
             nn.Linear(time_emb_dim*4, time_emb_dim)
         )
+        # conditional embedding for survive/die (0=die, 1=survive)
+        self.class_emb = nn.Embedding(2, time_emb_dim)
 
         # Downsampling
         channels = [base_channels * m for m in channel_mults]
@@ -83,9 +85,11 @@ class UNet(nn.Module):
         self.final_res_block = ResidualBlock(prev_ch, prev_ch, time_emb_dim)
         self.final_conv = nn.Conv2d(prev_ch, in_channels, kernel_size=1)
 
-    def forward(self, x, t):
+    def forward(self, x, t, c=None):
         # x: (B, C, H, W), t: (B,)
         t_emb = self.time_emb(t)
+        if c is not None:
+            t_emb = t_emb + self.class_emb(c)
         h = x
         skips = []
         # Down path

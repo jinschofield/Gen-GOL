@@ -56,11 +56,11 @@ class Diffusion:
         sqrt_om_acp = self.sqrt_one_minus_alphas_cumprod[t].view(-1,1,1,1)
         return sqrt_acp * x_start + sqrt_om_acp * noise
 
-    def p_losses(self, model, x_start, t):
+    def p_losses(self, model, x_start, t, c=None):
         # sample noise and noised input
         noise = torch.randn_like(x_start)
         x_noisy = self.q_sample(x_start, t, noise)
-        pred_noise = model(x_noisy, t)
+        pred_noise = model(x_noisy, t, c)
         # per-pixel MSE
         loss = (pred_noise - noise).pow(2)
         # emphasize live cells if weight>1
@@ -87,11 +87,12 @@ class Diffusion:
         return loss
 
     @torch.no_grad()
-    def p_sample(self, model, x, t):
+    def p_sample(self, model, x, t, c=None):
         betas_t = self.betas[t].view(-1,1,1,1)
         sqrt_one_minus_alphas_cumprod_t = self.sqrt_one_minus_alphas_cumprod[t].view(-1,1,1,1)
         sqrt_recip_alphas_t = torch.sqrt(1.0 / self.alphas[t]).view(-1,1,1,1)
-        model_mean = sqrt_recip_alphas_t * (x - betas_t / sqrt_one_minus_alphas_cumprod_t * model(x, t))
+        eps = model(x, t, c)
+        model_mean = sqrt_recip_alphas_t * (x - betas_t / sqrt_one_minus_alphas_cumprod_t * eps)
         if t[0] > 0:
             noise = torch.randn_like(x)
             posterior_var = self.posterior_variance[t].view(-1,1,1,1)
@@ -100,20 +101,20 @@ class Diffusion:
             return model_mean
 
     @torch.no_grad()
-    def sample(self, model, shape):
+    def sample(self, model, shape, c=None):
         x = torch.randn(shape, device=self.device)
         for i in reversed(range(self.timesteps)):
             t = torch.full((shape[0],), i, device=self.device, dtype=torch.long)
-            x = self.p_sample(model, x, t)
+            x = self.p_sample(model, x, t, c)
         return x
 
     @torch.no_grad()
-    def ddim_sample(self, model, shape, eta: float = 0.0):
+    def ddim_sample(self, model, shape, eta: float = 0.0, c=None):
         """Deterministic DDIM sampling (eta=0 for deterministic)."""
         x = torch.randn(shape, device=self.device)
         for i in reversed(range(self.timesteps)):
             t = torch.full((shape[0],), i, device=self.device, dtype=torch.long)
-            eps = model(x, t)
+            eps = model(x, t, c)
             alpha_t = self.alphas_cumprod[t].view(-1,1,1,1)
             alpha_prev = self.alphas_cumprod_prev[t].view(-1,1,1,1)
             sqrt_alpha_t = torch.sqrt(alpha_t)

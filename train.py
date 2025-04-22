@@ -52,7 +52,7 @@ def main():
 
     step = 0
     for epoch in range(args.epochs):
-        for batch in dataloader:
+        for x, c in dataloader:
             step += 1
             # ramp SSIM/BCE weights
             if args.ramp_steps > 0:
@@ -62,9 +62,10 @@ def main():
             diffusion.ssim_weight = args.ssim_weight * ramp
             diffusion.bce_weight = args.bce_weight * ramp
             optimizer.zero_grad()
-            x = batch.to(args.device)
+            x = x.to(args.device)
+            c = c.to(args.device)
             t = torch.randint(0, diffusion.timesteps, (x.size(0),), device=args.device).long()
-            loss = diffusion.p_losses(model, x, t)
+            loss = diffusion.p_losses(model, x, t, c)
             loss.backward()
             # gradient clipping
             if args.grad_clip > 0:
