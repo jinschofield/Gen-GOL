@@ -56,7 +56,9 @@ def main():
     # sample
     with torch.no_grad():
         samples = diffusion.sample(model, (args.num_samples,1,H,H))
-    # binarize
+    # clamp outputs to [0,1] for meaningful thresholding
+    samples = torch.clamp(samples, 0.0, 1.0)
+    # binarize (alive if >0.5)
     bin_samples = (samples > 0.5).float()
     # save grid
     save_grid(bin_samples.cpu().numpy(), os.path.join(args.out_dir, 'samples.png'))
