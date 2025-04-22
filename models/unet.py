@@ -19,9 +19,16 @@ class SinusoidalPosEmb(nn.Module):
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, time_emb_dim, groups=8):
         super().__init__()
-        self.norm1 = nn.GroupNorm(groups, in_channels)
+        # adjust group count so num_channels divisible by num_groups
+        num_groups1 = min(groups, in_channels)
+        if in_channels % num_groups1 != 0:
+            num_groups1 = 1
+        self.norm1 = nn.GroupNorm(num_groups1, in_channels)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
-        self.norm2 = nn.GroupNorm(groups, out_channels)
+        num_groups2 = min(groups, out_channels)
+        if out_channels % num_groups2 != 0:
+            num_groups2 = 1
+        self.norm2 = nn.GroupNorm(num_groups2, out_channels)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
         self.time_mlp = nn.Sequential(
             nn.SiLU(),
