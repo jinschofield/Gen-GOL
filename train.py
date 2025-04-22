@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--schedule', type=str, default='linear', choices=['linear','cosine'], help='noise schedule')
     parser.add_argument('--ssim_weight', type=float, default=1.0, help='weight multiplier for SSIM loss')
     parser.add_argument('--bce_weight', type=float, default=0.0, help='weight multiplier for BCE loss on x0')
+    parser.add_argument('--ramp_steps', type=int, default=0, help='steps over which to ramp SSIM/BCE weights from 0 to final')
     parser.add_argument('--ema_decay', type=float, default=0.995, help='EMA decay for model weights')
     args = parser.parse_args()
 
@@ -43,6 +44,13 @@ def main():
     for epoch in range(args.epochs):
         for batch in dataloader:
             step += 1
+            # ramp SSIM/BCE weights
+            if args.ramp_steps > 0:
+                ramp = min(1.0, step / args.ramp_steps)
+            else:
+                ramp = 1.0
+            diffusion.ssim_weight = args.ssim_weight * ramp
+            diffusion.bce_weight = args.bce_weight * ramp
             optimizer.zero_grad()
             x = batch.to(args.device)
             t = torch.randint(0, diffusion.timesteps, (x.size(0),), device=args.device).long()
