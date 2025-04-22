@@ -25,11 +25,12 @@ def main():
     parser.add_argument('--grad_clip', type=float, default=0.0, help='max norm for gradient clipping; 0 disables')
     parser.add_argument('--lr_scheduler', type=str, default='none', choices=['none','cosine'], help='learning rate scheduler')
     parser.add_argument('--ema_decay', type=float, default=0.995, help='EMA decay for model weights')
+    parser.add_argument('--noise_prob', type=float, default=0.0, help='probability of random cell flips as data augmentation')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
 
-    dataset = GolDataset(data_dir=args.data_dir, augment=True)
+    dataset = GolDataset(data_dir=args.data_dir, augment=True, noise_prob=args.noise_prob)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     model = UNet().to(args.device)

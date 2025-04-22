@@ -8,12 +8,13 @@ import torch
 from torch.utils.data import Dataset
 
 class GolDataset(Dataset):
-    def __init__(self, data_dir, augment=True, max_translation=None):
+    def __init__(self, data_dir, augment=True, max_translation=None, noise_prob=0.0):
         """
         Args:
             data_dir (str): path to directory containing .npy pattern files
             augment (bool): apply random rotations, flips, translations
             max_translation (int, optional): max shift in pixels; default size//4
+            noise_prob (float, optional): probability of random cell flips as augmentation
         """
         self.data_dir = data_dir
         self.paths = [
@@ -28,6 +29,8 @@ class GolDataset(Dataset):
         self.size = sample.shape[0]
         self.augment = augment
         self.max_translation = max_translation or self.size // 4
+        # probability of random cell flips as augmentation
+        self.noise_prob = noise_prob
 
     def __len__(self):
         return len(self.paths)
@@ -52,6 +55,11 @@ class GolDataset(Dataset):
         tx = np.random.randint(-self.max_translation, self.max_translation + 1)
         ty = np.random.randint(-self.max_translation, self.max_translation + 1)
         arr = self._translate(arr, tx, ty)
+        # random cell-level noise flips
+        if self.noise_prob > 0:
+            mask = np.random.rand(*arr.shape) < self.noise_prob
+            arr = arr.copy()
+            arr[mask] = 1 - arr[mask]
         return arr
 
     def _translate(self, arr, tx, ty):
