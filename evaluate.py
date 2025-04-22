@@ -125,6 +125,7 @@ def main():
     # evaluate
     results = evaluate_samples(samples, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
     # print results
+    print("\nTrained+conditioned (samples.png, metrics.txt):")
     for k, v in results.items():
         print(f"{k}: {v}")
     # save metrics
@@ -142,12 +143,17 @@ def main():
     bin_nc = (samples_nc > threshold).float()
     save_grid(bin_nc.cpu().numpy(), os.path.join(args.out_dir, 'samples_no_cond.png'))
     results_nc = evaluate_samples(samples_nc, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
-    print("\nTrained model no-condition results:")
+    print("\nTrained+unconditioned (samples_no_cond.png, metrics_no_cond.txt):")
     for k, v in results_nc.items():
         print(f"{k}: {v}")
     with open(os.path.join(args.out_dir, 'metrics_no_cond.txt'), 'w') as f:
         for k, v in results_nc.items():
             f.write(f"{k}: {v}\n")
+    # compute improvement due to conditioning for trained
+    improvement_trained = {k: results.get(k,0) - results_nc.get(k,0) for k in results_nc}
+    print("\nImprovements from conditioning (trained):")
+    for k, v in improvement_trained.items():
+        print(f"{k}: {v}")
 
     # evaluate untrained baseline if provided
     if args.baseline_model:
@@ -166,7 +172,7 @@ def main():
                     base_samples = diffusion.ddim_sample(base_model, shape, eta=args.eta, c=c)
             base_samples = torch.clamp(base_samples, 0.0, 1.0)
             base_results = evaluate_samples(base_samples, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
-            print("\nBaseline (untrained) results:")
+            print("\nUntrained+conditioned (baseline_samples.png, baseline_metrics.txt):")
             for k, v in base_results.items():
                 print(f"{k}: {v}")
             # save baseline metrics
@@ -184,12 +190,17 @@ def main():
             bin_base_nc = (base_nc > threshold).float()
             save_grid(bin_base_nc.cpu().numpy(), os.path.join(args.out_dir, 'baseline_samples_no_cond.png'))
             base_results_nc = evaluate_samples(base_nc, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
-            print("\nBaseline untrained model no-condition results:")
+            print("\nUntrained+unconditioned (baseline_samples_no_cond.png, baseline_metrics_no_cond.txt):")
             for k, v in base_results_nc.items():
                 print(f"{k}: {v}")
             with open(os.path.join(args.out_dir, 'baseline_metrics_no_cond.txt'), 'w') as f:
                 for k, v in base_results_nc.items():
                     f.write(f"{k}: {v}\n")
+            # compute improvement due to conditioning for untrained
+            improvement_untrained = {k: base_results.get(k,0) - base_results_nc.get(k,0) for k in base_results_nc}
+            print("\nImprovements from conditioning (untrained):")
+            for k, v in improvement_untrained.items():
+                print(f"{k}: {v}")
 
     # Random baseline for comparison
     # generate random samples
