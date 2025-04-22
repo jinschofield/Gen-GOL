@@ -1,4 +1,7 @@
 import os
+import sys
+# ensure project root is on sys.path for sibling imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 from utils.gol_simulator import simulate
 from utils.metrics import detect_period
