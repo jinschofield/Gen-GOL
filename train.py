@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--schedule', type=str, default='linear', choices=['linear','cosine'], help='noise schedule')
     parser.add_argument('--ssim_weight', type=float, default=1.0, help='weight multiplier for SSIM loss')
     parser.add_argument('--bce_weight', type=float, default=0.0, help='weight multiplier for BCE loss on x0')
+    parser.add_argument('--mae_weight', type=float, default=0.0, help='weight multiplier for MAE (L1) loss on noise prediction')
     parser.add_argument('--ramp_steps', type=int, default=0, help='steps over which to ramp SSIM/BCE weights from 0 to final')
     parser.add_argument('--grad_clip', type=float, default=0.0, help='max norm for gradient clipping; 0 disables')
     parser.add_argument('--lr_scheduler', type=str, default='none', choices=['none','cosine'], help='learning rate scheduler')
@@ -32,19 +33,33 @@ def main():
     parser.add_argument('--cf_prob', type=float, default=0.1, help='probability to drop conditioning (classifier-free)')
     parser.add_argument('--resume', type=str, default=None, help='path to checkpoint to resume training from')
     parser.add_argument('--val_split', type=float, default=0.1, help='fraction of data for validation (0=no val)')
+    parser.add_argument('--random_baseline', action='store_true',
+                        help='train on random boards instead of GoL data')
+    parser.add_argument('--random_baseline_samples', type=int, default=20000,
+                        help='number of random boards to use when --random_baseline')
+    parser.add_argument('--grid_size', type=int, default=32,
+                        help='grid size for random boards when using random baseline')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
 
-    # auto-generate dataset if missing
-    survive_dir = os.path.join(args.data_dir, 'survive')
-    die_dir = os.path.join(args.data_dir, 'die')
-    if not (os.path.isdir(survive_dir) and os.listdir(survive_dir) and os.path.isdir(die_dir) and os.listdir(die_dir)):
-        print("Dataset missing; generating via generate_dataset.py...")
-        subprocess.run(["python", "data/generate_dataset.py", "--data_dir", args.data_dir], check=True)
-
-    # load full dataset
-    full_dataset = GolDataset(data_dir=args.data_dir, augment=True, noise_prob=args.noise_prob)
+    # choose dataset: GoL or random baseline
+    if args.random_baseline:
+        from data.random_dataset import RandomPatternDataset
+        full_dataset = RandomPatternDataset(
+            num_samples=args.random_baseline_samples,
+            grid_size=args.grid_size
+        )
+    else:
+        # auto-generate dataset if missing
+        survive_dir = os.path.join(args.data_dir, 'survive')
+        die_dir = os.path.join(args.data_dir, 'die')
+        if not (os.path.isdir(survive_dir) and os.listdir(survive_dir)
+                and os.path.isdir(die_dir) and os.listdir(die_dir)):
+            print("Dataset missing; generating via generate_dataset.py...")
+            subprocess.run(["python", "data/generate_dataset.py", "--data_dir", args.data_dir], check=True)
+        # load full dataset
+        full_dataset = GolDataset(data_dir=args.data_dir, augment=True, noise_prob=args.noise_prob)
     # validation split via Subset
     if args.val_split > 0:
         n = len(full_dataset)
@@ -77,7 +92,8 @@ def main():
         p.requires_grad_(False)
     diffusion = Diffusion(timesteps=args.timesteps, device=args.device,
                           live_weight=args.live_weight, schedule=args.schedule,
-                          ssim_weight=args.ssim_weight, bce_weight=args.bce_weight)
+                          ssim_weight=args.ssim_weight, bce_weight=args.bce_weight,
+                          mae_weight=args.mae_weight)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     ema_decay = args.ema_decay
 
