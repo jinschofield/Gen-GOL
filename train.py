@@ -33,19 +33,33 @@ def main():
     parser.add_argument('--cf_prob', type=float, default=0.1, help='probability to drop conditioning (classifier-free)')
     parser.add_argument('--resume', type=str, default=None, help='path to checkpoint to resume training from')
     parser.add_argument('--val_split', type=float, default=0.1, help='fraction of data for validation (0=no val)')
+    parser.add_argument('--random_baseline', action='store_true',
+                        help='train on random boards instead of GoL data')
+    parser.add_argument('--random_baseline_samples', type=int, default=20000,
+                        help='number of random boards to use when --random_baseline')
+    parser.add_argument('--grid_size', type=int, default=32,
+                        help='grid size for random boards when using random baseline')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
 
-    # auto-generate dataset if missing
-    survive_dir = os.path.join(args.data_dir, 'survive')
-    die_dir = os.path.join(args.data_dir, 'die')
-    if not (os.path.isdir(survive_dir) and os.listdir(survive_dir) and os.path.isdir(die_dir) and os.listdir(die_dir)):
-        print("Dataset missing; generating via generate_dataset.py...")
-        subprocess.run(["python", "data/generate_dataset.py", "--data_dir", args.data_dir], check=True)
-
-    # load full dataset
-    full_dataset = GolDataset(data_dir=args.data_dir, augment=True, noise_prob=args.noise_prob)
+    # choose dataset: GoL or random baseline
+    if args.random_baseline:
+        from data.random_dataset import RandomPatternDataset
+        full_dataset = RandomPatternDataset(
+            num_samples=args.random_baseline_samples,
+            grid_size=args.grid_size
+        )
+    else:
+        # auto-generate dataset if missing
+        survive_dir = os.path.join(args.data_dir, 'survive')
+        die_dir = os.path.join(args.data_dir, 'die')
+        if not (os.path.isdir(survive_dir) and os.listdir(survive_dir)
+                and os.path.isdir(die_dir) and os.listdir(die_dir)):
+            print("Dataset missing; generating via generate_dataset.py...")
+            subprocess.run(["python", "data/generate_dataset.py", "--data_dir", args.data_dir], check=True)
+        # load full dataset
+        full_dataset = GolDataset(data_dir=args.data_dir, augment=True, noise_prob=args.noise_prob)
     # validation split via Subset
     if args.val_split > 0:
         n = len(full_dataset)
