@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--ema_decay', type=float, default=0.995, help='EMA decay for model weights')
     parser.add_argument('--noise_prob', type=float, default=0.0, help='probability of random cell flips as data augmentation')
     parser.add_argument('--cf_prob', type=float, default=0.1, help='probability to drop conditioning (classifier-free)')
+    parser.add_argument('--resume', type=str, default=None, help='path to checkpoint to resume training from')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
@@ -36,10 +37,18 @@ def main():
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     model = UNet().to(args.device)
-    # save initial (untrained) model for baseline comparison
-    init_ckpt = os.path.join(args.save_dir, "model_init.pt")
-    torch.save(model.state_dict(), init_ckpt)
-    print(f"Saved initial untrained model to {init_ckpt}")
+    # resume from checkpoint or save initial (untrained) model
+    if args.resume:
+        if os.path.isfile(args.resume):
+            state = torch.load(args.resume, map_location=args.device)
+            model.load_state_dict(state)
+            print(f"Resumed training from checkpoint {args.resume}")
+        else:
+            raise FileNotFoundError(f"Resume checkpoint '{args.resume}' not found.")
+    else:
+        init_ckpt = os.path.join(args.save_dir, "model_init.pt")
+        torch.save(model.state_dict(), init_ckpt)
+        print(f"Saved initial untrained model to {init_ckpt}")
 
     # initialize EMA model
     ema_model = copy.deepcopy(model)
