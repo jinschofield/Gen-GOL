@@ -76,12 +76,14 @@ if __name__ == '__main__':
         if write_header:
             writer.writerow([
                 'threshold','class_label','direction',
-                'trained_cond','trained_unc','trained_imp',
-                'baseline_cond','baseline_unc','baseline_imp',
-                'novel_trained_cond','novel_trained_unc',
-                'novel_baseline_cond','novel_baseline_unc',
-                'novel_random'
+                'trained_cond_pct','trained_unc_pct','trained_imp_pct',
+                'baseline_cond_pct','baseline_unc_pct','baseline_imp_pct',
+                'novel_trained_cond_pct','novel_trained_unc_pct',
+                'novel_baseline_cond_pct','novel_baseline_unc_pct',
+                'novel_random_pct'
             ])
+        # percentage base
+        n = args.num_samples
         for th in args.thresholds:
             for cl in [1,0]:
                 trc, trnc, bc, bnc, rand = run_eval(
@@ -90,28 +92,37 @@ if __name__ == '__main__':
                     args.device, args.sample_method, args.eta
                 )
                 direction = 'alive' if cl==1 else 'dead'
-                # select metric key
+                # select metric key and raw values
                 key = 'survived_unknown' if cl==1 else 'died_out'
-                # raw counts
                 trc_val = trc.get(key, 0.0)
                 trnc_val = trnc.get(key, 0.0)
-                bc_val   = bc.get(key, 0.0)
-                bnc_val  = bnc.get(key, 0.0)
-                # improvements
-                tr_imp = trc_val - trnc_val
-                ba_imp = bc_val - bnc_val
-                # novel fractions
+                bc_val = bc.get(key, 0.0)
+                bnc_val = bnc.get(key, 0.0)
                 trc_novel = trc.get('novel_frac', 0.0)
                 trnc_novel = trnc.get('novel_frac', 0.0)
                 bc_novel = bc.get('novel_frac', 0.0)
                 bnc_novel = bnc.get('novel_frac', 0.0)
                 rand_novel = rand.get('novel_frac', 0.0)
+                # convert counts to percentages
+                trc_pct = trc_val / n * 100.0
+                trnc_pct = trnc_val / n * 100.0
+                bc_pct = bc_val / n * 100.0
+                bnc_pct = bnc_val / n * 100.0
+                # percentage improvements
+                imp_pct = trc_pct - trnc_pct
+                imp_b_pct = bc_pct - bnc_pct
+                # convert novel fractions to percentages
+                novel_trc_pct = trc_novel * 100.0
+                novel_trnc_pct = trnc_novel * 100.0
+                novel_bc_pct = bc_novel * 100.0
+                novel_bnc_pct = bnc_novel * 100.0
+                novel_rand_pct = rand_novel * 100.0
                 writer.writerow([
                     th, cl, direction,
-                    trc_val, trnc_val, tr_imp,
-                    bc_val, bnc_val, ba_imp,
-                    trc_novel, trnc_novel,
-                    bc_novel, bnc_novel,
-                    rand_novel
+                    trc_pct, trnc_pct, imp_pct,
+                    bc_pct, bnc_pct, imp_b_pct,
+                    novel_trc_pct, novel_trnc_pct,
+                    novel_bc_pct, novel_bnc_pct,
+                    novel_rand_pct
                 ])
     print(f"Sweep complete. Results written to {args.output_csv}")
