@@ -3,7 +3,7 @@ import subprocess
 import random
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from data.dataset import GolDataset
 from models.unet import UNet
 from models.diffusion import Diffusion
@@ -45,21 +45,14 @@ def main():
 
     # load full dataset
     full_dataset = GolDataset(data_dir=args.data_dir, augment=True, noise_prob=args.noise_prob)
-
-    # validation split
+    # validation split via Subset
     if args.val_split > 0:
         n = len(full_dataset)
         idx = list(range(n)); random.shuffle(idx)
         split = int(n * (1 - args.val_split))
         train_idx, val_idx = idx[:split], idx[split:]
-        train_paths = [full_dataset.paths[i] for i in train_idx]
-        train_labels = [full_dataset.labels[i] for i in train_idx]
-        val_paths = [full_dataset.paths[i] for i in val_idx]
-        val_labels = [full_dataset.labels[i] for i in val_idx]
-        train_dataset = GolDataset(paths=train_paths, labels=train_labels, augment=True, noise_prob=args.noise_prob)
-        val_dataset = GolDataset(paths=val_paths, labels=val_labels, augment=False, noise_prob=args.noise_prob)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
-        val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
+        train_loader = DataLoader(Subset(full_dataset, train_idx), batch_size=args.batch_size, shuffle=True, num_workers=4)
+        val_loader   = DataLoader(Subset(full_dataset, val_idx),   batch_size=args.batch_size, shuffle=False, num_workers=4)
     else:
         train_loader = DataLoader(full_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
         val_loader = None
