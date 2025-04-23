@@ -7,12 +7,13 @@ import warnings
 class Diffusion:
     def __init__(self, timesteps=300, beta_start=1e-4, beta_end=0.02,
                  device='cpu', live_weight=1.0, schedule: Optional[str]='linear',
-                 ssim_weight: float=0.0, bce_weight: float=0.0):
+                 ssim_weight: float=0.0, bce_weight: float=0.0, mae_weight: float=0.0):
         """
         Args:
             live_weight: weight multiplier for loss on live cells (>1 to emphasize alive transitions)
             ssim_weight: weight multiplier for structural SSIM loss
             bce_weight: weight multiplier for binary cross-entropy loss on x0
+            mae_weight: weight multiplier for L1 (MAE) loss on noise prediction
         """
         self.timesteps = timesteps
         self.device = device
@@ -33,6 +34,8 @@ class Diffusion:
         self.ssim_weight = ssim_weight
         # binary cross-entropy loss weight on x0 reconstruction
         self.bce_weight = bce_weight
+        # weight for L1 (MAE) loss on noise prediction
+        self.mae_weight = mae_weight
         self.schedule = schedule
 
     @staticmethod
@@ -70,6 +73,10 @@ class Diffusion:
             w = 1 + (self.live_weight - 1) * mask
             loss = loss * w
         loss = loss.mean()
+        # optional MAE loss on noise prediction
+        if self.mae_weight > 0.0:
+            mae_loss = (pred_noise - noise).abs().mean()
+            loss = loss + self.mae_weight * mae_loss
         # reconstruct x0_pred for SSIM/BCE if needed
         if self.ssim_weight > 0 or self.bce_weight > 0:
             sqrt_acp = self.sqrt_alphas_cumprod[t].view(-1,1,1,1)
