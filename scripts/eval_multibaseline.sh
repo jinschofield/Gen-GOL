@@ -30,10 +30,10 @@ for th in "${thresholds[@]}"; do
       --sample_method ancestral \
       --eta 0.0)
     # extract
-gc() { echo "$out" | grep -Eo "${1}: [-0-9.]+" | cut -d':' -f2; }
-    key_tc=$(gc survived_unknown)
+gc() { echo "$out" | grep -Eo "${1}: [-0-9.]+"; }
+    key_tc=$(gc survived_unknown | head -1 | cut -d':' -f2)
     key_tnc=$(gc survived_unknown | tail -1 | cut -d':' -f2)
-    key_bc=$(gc died_out)
+    key_bc=$(gc died_out | head -1 | cut -d':' -f2)
     key_bnc=$(gc died_out | tail -1 | cut -d':' -f2)
     rk=$(echo "$out" | grep -Eo "novel_frac: [-0-9.]+" | head -1 | cut -d':' -f2)
     # improvements
