@@ -15,6 +15,6 @@ class RandomPatternDataset(Dataset):
     def __getitem__(self, idx):
         # sample uniform random bits (0 or 1)
         x = torch.bernoulli(torch.full((1, self.grid_size, self.grid_size), 0.5))
-        # no conditioning label for random baseline
-        c = None
+        # random conditioning label for CF training: 0 or 1
+        c = torch.randint(0, 2, (), dtype=torch.long)
         return x, c
