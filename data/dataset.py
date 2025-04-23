@@ -36,8 +36,6 @@ class GolDataset(Dataset):
         self.labels = []
         for p in all_files:
             arr = np.load(p).astype(np.uint8)
-            # run a short simulation to decide
-            # label based on simulation outcome after 200 steps (match evaluation horizon)
             hist = simulate(arr, steps=200)
             lbl = 1 if hist and hist[-1].sum() > 0 else 0
             self.paths.append(p)
