@@ -1,4 +1,7 @@
 import os
+import subprocess
+import random
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from data.dataset import GolDataset
@@ -7,7 +10,6 @@ from models.diffusion import Diffusion
 import argparse
 import copy
 from torch.nn.utils import clip_grad_norm_
-import random
 
 def main():
     parser = argparse.ArgumentParser()
@@ -29,12 +31,38 @@ def main():
     parser.add_argument('--noise_prob', type=float, default=0.0, help='probability of random cell flips as data augmentation')
     parser.add_argument('--cf_prob', type=float, default=0.1, help='probability to drop conditioning (classifier-free)')
     parser.add_argument('--resume', type=str, default=None, help='path to checkpoint to resume training from')
+    parser.add_argument('--val_split', type=float, default=0.1, help='fraction of data for validation (0=no val)')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
 
-    dataset = GolDataset(data_dir=args.data_dir, augment=True, noise_prob=args.noise_prob)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    # auto-generate dataset if missing
+    survive_dir = os.path.join(args.data_dir, 'survive')
+    die_dir = os.path.join(args.data_dir, 'die')
+    if not (os.path.isdir(survive_dir) and os.listdir(survive_dir) and os.path.isdir(die_dir) and os.listdir(die_dir)):
+        print("Dataset missing; generating via generate_dataset.py...")
+        subprocess.run(["python", "data/generate_dataset.py", "--data_dir", args.data_dir], check=True)
+
+    # load full dataset
+    full_dataset = GolDataset(data_dir=args.data_dir, augment=True, noise_prob=args.noise_prob)
+
+    # validation split
+    if args.val_split > 0:
+        n = len(full_dataset)
+        idx = list(range(n)); random.shuffle(idx)
+        split = int(n * (1 - args.val_split))
+        train_idx, val_idx = idx[:split], idx[split:]
+        train_paths = [full_dataset.paths[i] for i in train_idx]
+        train_labels = [full_dataset.labels[i] for i in train_idx]
+        val_paths = [full_dataset.paths[i] for i in val_idx]
+        val_labels = [full_dataset.labels[i] for i in val_idx]
+        train_dataset = GolDataset(paths=train_paths, labels=train_labels, augment=True, noise_prob=args.noise_prob)
+        val_dataset = GolDataset(paths=val_paths, labels=val_labels, augment=False, noise_prob=args.noise_prob)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
+        val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    else:
+        train_loader = DataLoader(full_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
+        val_loader = None
 
     model = UNet().to(args.device)
     # resume from checkpoint or save initial (untrained) model
@@ -63,12 +91,12 @@ def main():
     # setup learning rate scheduler if requested
     scheduler = None
     if args.lr_scheduler == 'cosine':
-        total_steps = args.epochs * len(dataloader)
+        total_steps = args.epochs * len(train_loader)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=total_steps)
 
     step = 0
     for epoch in range(args.epochs):
-        for x, c in dataloader:
+        for x, c in train_loader:
             step += 1
             # ramp SSIM/BCE weights
             if args.ramp_steps > 0:
@@ -110,6 +138,19 @@ def main():
                 ema_ckpt = os.path.join(args.save_dir, f"model_{step}_ema.pt")
                 torch.save(ema_model.state_dict(), ema_ckpt)
                 print(f"EMA model saved to {ema_ckpt}")
+
+        # end of epoch: validation loss
+        if val_loader is not None:
+            model.eval()
+            val_losses = []
+            for xv, cv in val_loader:
+                xv = xv.to(args.device); cv = cv.to(args.device)
+                tv = torch.randint(0, diffusion.timesteps, (xv.size(0),), device=args.device).long()
+                lv = diffusion.p_losses(model, xv, tv, cv)
+                val_losses.append(lv.item())
+            avg_val = np.mean(val_losses)
+            print(f"Epoch {epoch+1}/{args.epochs} Validation Loss: {avg_val:.4f}")
+            model.train()
 
     # save final model
     final_ckpt = os.path.join(args.save_dir, "model_final.pt")
