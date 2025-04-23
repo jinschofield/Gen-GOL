@@ -12,7 +12,7 @@ out_csv="eval_sweep_multibase.csv"
 echo "threshold,class_label,direction,trained_cond,trained_unc,trained_imp,baseline_cond,baseline_unc,baseline_imp,novel_trained_cond,novel_trained_unc,novel_baseline_cond,novel_baseline_unc,novel_random" > "$out_csv"
 
 for th in "${thresholds[@]}"; do
-  baseline_model="checkpoints/random_baseline_${th}/model_final.pt"
+  baseline_model="baseline_models/model_final_${th}.pt"
   for cl in 1 0; do
     direction="alive"
     [[ $cl -eq 0 ]] && direction="dead"
