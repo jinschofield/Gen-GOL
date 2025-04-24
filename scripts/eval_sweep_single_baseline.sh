@@ -9,7 +9,7 @@ cd "$(dirname "$0")"/..
 thresholds=(0.01 0.1 0.3 0.5)
 trained_ckpt="checkpoints/model_final.pt"
 baseline_ckpt="$trained_ckpt"
-out_csv="eval_sweep_single_baseline.csv"
+out_csv="eval_sweep_single_baseline_ema.csv"
 
 # Use Python sweeper instead of shell parsing
 python scripts/eval_sweep.py \
