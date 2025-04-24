@@ -23,4 +23,6 @@ python scripts/eval_sweep.py \
   --sample_method ancestral \
   --eta 0.0 \
   --output_csv "$out_csv"
+echo "=== Sweep Completed: $out_csv ==="
+cat "$out_csv"
 exit 0
