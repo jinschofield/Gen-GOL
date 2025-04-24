@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+set -x
 
 # Sweep multiple thresholds with a single baseline and write CSV
 cd "$(dirname "$0")"/..
@@ -7,7 +8,7 @@ cd "$(dirname "$0")"/..
 # settings
 thresholds=(0.01 0.1 0.3 0.5)
 trained_ckpt="checkpoints/model_final.pt"
-baseline_ckpt="checkpoints/model_init.pt"
+baseline_ckpt="$trained_ckpt"
 out_csv="eval_sweep_single_baseline.csv"
 
 # header
@@ -31,29 +32,33 @@ for th in "${thresholds[@]}"; do
       --timesteps 200 \
       --device cuda \
       --sample_method ancestral \
-      --eta 0.0)
+      --eta 0.0 2>&1)
+    echo "----- DEBUG OUTPUT BEGIN -----"
+    echo "$out"
+    echo "----- DEBUG OUTPUT END -----"
 
     # parse metrics
-extract() { echo "$out" | grep -Eo "${1}: [-0-9.]+" | tail -n1 | cut -d':' -f2; }
+    # capture die/survive counts in order for trained_cond, trained_unc, baseline_cond, baseline_unc
     key=$( [[ $cl -eq 1 ]] && echo "survived_unknown" || echo "died_out" )
-    tc=$(extract "Trained+conditioned.*${key}")
-    tnc=$(extract "Trained+unconditioned.*${key}")
-    bc=$(extract "Untrained+conditioned.*${key}")
-    bnc=$(extract "Untrained+unconditioned.*${key}")
-    rand_n=$(echo "$out" | grep -Eo "novel_frac: [-0-9.]+" | tail -n1 | awk '{print $2}')
+    vals=( $(echo "$out" | grep -Eo "${key}: [-0-9.]+" | cut -d':' -f2) )
+    tc=${vals[0]:-0}
+    tnc=${vals[1]:-0}
+    bc=${vals[2]:-0}
+    bnc=${vals[3]:-0}
+    rand_n=$(echo "$out" | grep -Eo "novel_frac: [-0-9.]+" | tail -n1 | cut -d':' -f2 || echo "0")
 
     # improvements
-    imp_t=$(awk -v a="${tc:-0}" -v b="${tnc:-0}" 'BEGIN {print a - b}')
-    imp_b=$(awk -v a="${bc:-0}" -v b="${bnc:-0}" 'BEGIN {print a - b}')
+    imp_t=$(awk -v a="$tc" -v b="$tnc" 'BEGIN {print a - b}')
+    imp_b=$(awk -v a="$bc" -v b="$bnc" 'BEGIN {print a - b}')
 
     # novel fractions
-    ntc=$(extract "Trained+conditioned.*novel_frac")
-    ntnc=$(extract "Trained+unconditioned.*novel_frac")
-    nbc=$(extract "Untrained+conditioned.*novel_frac")
-    nbnc=$(extract "Untrained+unconditioned.*novel_frac")
+    ntc=$(echo "$out" | grep -Eo "novel_frac: [-0-9.]+" | head -1 | cut -d':' -f2)
+    ntnc=$(echo "$out" | grep -Eo "novel_frac: [-0-9.]+" | head -2 | tail -1 | cut -d':' -f2)
+    nbc=$(echo "$out" | grep -Eo "novel_frac: [-0-9.]+" | head -3 | tail -1 | cut -d':' -f2)
+    nbnc=$(echo "$out" | grep -Eo "novel_frac: [-0-9.]+" | head -4 | tail -1 | cut -d':' -f2)
 
     # write CSV row
-echo "$th,$cl,$direction,$tc,$tnc,$imp_t,$bc,$bnc,$imp_b,$ntc,$ntnc,$nbc,$nbnc,$rand_n" >> "$out_csv"
+    echo "$th,$cl,$direction,$tc,$tnc,$imp_t,$bc,$bnc,$imp_b,$ntc,$ntnc,$nbc,$nbnc,$rand_n" >> "$out_csv"
     echo "[DONE] threshold=$th class=$cl"
   done
 done
