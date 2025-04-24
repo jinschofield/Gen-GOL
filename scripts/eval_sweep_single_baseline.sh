@@ -7,8 +7,8 @@ cd "$(dirname "$0")"/..
 
 # settings
 thresholds=(0.3)
-trained_ckpt="finished_models/adv_weight_0.01.pt"
-out_csv="eval_sweep_single_baseline_adv_0.01.csv"
+trained_ckpt="finished_models/adversarial_0.01.pt"
+out_csv="eval_sweep_single_baseline_adversarial_0.01.csv"
 
 # Use Python sweeper instead of shell parsing
 python scripts/eval_sweep.py \
