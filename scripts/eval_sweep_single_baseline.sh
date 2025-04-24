@@ -28,13 +28,13 @@ for th in "${thresholds[@]}"; do
       --threshold "$th" \
       --class_label "$cl" \
       --num_samples 64 \
-      --timesteps 300 \
+      --timesteps 200 \
       --device cuda \
       --sample_method ancestral \
       --eta 0.0)
 
     # parse metrics
-extract() { echo "$out" | grep -Eo "${1}: [-0-9.]+" | tail -n1 | awk '{print $2}'; }
+extract() { echo "$out" | grep -Eo "${1}: [-0-9.]+" | tail -n1 | cut -d':' -f2; }
     key=$( [[ $cl -eq 1 ]] && echo "survived_unknown" || echo "died_out" )
     tc=$(extract "Trained+conditioned.*${key}")
     tnc=$(extract "Trained+unconditioned.*${key}")
@@ -43,8 +43,8 @@ extract() { echo "$out" | grep -Eo "${1}: [-0-9.]+" | tail -n1 | awk '{print $2}
     rand_n=$(echo "$out" | grep -Eo "novel_frac: [-0-9.]+" | tail -n1 | awk '{print $2}')
 
     # improvements
-    imp_t=$(awk "BEGIN {print $tc - $tnc}")
-    imp_b=$(awk "BEGIN {print $bc - $bnc}")
+    imp_t=$(awk -v a="${tc:-0}" -v b="${tnc:-0}" 'BEGIN {print a - b}')
+    imp_b=$(awk -v a="${bc:-0}" -v b="${bnc:-0}" 'BEGIN {print a - b}')
 
     # novel fractions
     ntc=$(extract "Trained+conditioned.*novel_frac")
