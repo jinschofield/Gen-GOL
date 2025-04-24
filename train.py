@@ -150,7 +150,7 @@ def main():
                 real_prob, real_feats = disc(real)
                 fake_prob, fake_feats = disc(fake)
                 loss_d = - (torch.log(real_prob + 1e-8).mean() + torch.log(1 - fake_prob + 1e-8).mean())
-                disc_opt.zero_grad(); loss_d.backward(); disc_opt.step()
+                disc_opt.zero_grad(); loss_d.backward(retain_graph=True); disc_opt.step()
                 # generator adversarial/feature-matching losses
                 fake_prob_g, fake_feats_g = disc(x0_pred)
                 adv_loss = - torch.log(fake_prob_g + 1e-8).mean() if adv_weight > 0 else 0
