@@ -5,8 +5,8 @@ set -e
 cd "$(dirname "$0")"/..
 
 thresholds=(0.01 0.1 0.3 0.5)
-trained_ckpt="checkpoints/best_so_far.pt"
-out_csv="eval_sweep_multibase.csv"
+trained_ckpt="finished_models/adv_weight_0.01.pt"
+out_csv="adv_weight_0.01_results.csv"
 
 # header
 echo "threshold,class_label,direction,trained_cond,trained_unc,trained_imp,baseline_cond,baseline_unc,baseline_imp,novel_trained_cond,novel_trained_unc,novel_baseline_cond,novel_baseline_unc,novel_random,novel_trained_cond_trans_inv,novel_trained_unc_trans_inv,novel_baseline_cond_trans_inv,novel_baseline_unc_trans_inv,novel_random_trans_inv" > "$out_csv"
@@ -57,4 +57,5 @@ gc() { echo "$out" | grep -Eo "${1}: [-0-9.]+"; }
   done
 done
 
-echo "✅ Multi‑baseline CSV written to $out_csv"
+echo "✅ Multi-baseline CSV written to $out_csv"
+exit 0
