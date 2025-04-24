@@ -6,8 +6,8 @@ cd "$(dirname "$0")"/..
 
 # settings
 thresholds=(0.01 0.1 0.3 0.5)
-trained_ckpt="checkpoints/best_so_far.pt"
-baseline_ckpt="baseline_models/model_5000_random.pt"
+trained_ckpt="checkpoints/model_final.pt"
+baseline_ckpt="checkpoints/model_init.pt"
 out_csv="eval_sweep_single_baseline.csv"
 
 # header
