@@ -6,7 +6,7 @@ set -x
 cd "$(dirname "$0")"/..
 
 # settings
-thresholds=(0.01 0.1 0.3 0.5)
+thresholds=(0.3)
 ckpt="finished_models/adversarial_0.01.pt"
 out_csv="eval_sweep_no_baseline_adversarial_0.01.csv"
 
