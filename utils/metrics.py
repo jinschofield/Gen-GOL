@@ -25,37 +25,49 @@ def evaluate_samples(samples, train_patterns, max_steps=50, threshold=0.5):
         train_patterns: list of np.ndarray (H,W) training grids for novelty check.
         threshold: float, cutoff for binarization.
     Returns:
-        dict with counts and novel fraction.
+        dict with counts and both novelty fractions (rot/flip-only and translation-invariant).
     """
     N = samples.shape[0]
     grids = (samples.squeeze(1).cpu().numpy() > threshold).astype(np.uint8)
     results = defaultdict(int)
-    novel = 0
-    # Precompute train set variants
-    train_set = set()
+    # novelty counters: rotation+flip only and translation-invariant
+    novel_rf = 0
+    novel_ti = 0
+    # build rotation+flip set
+    rf_set = set()
     for pat in train_patterns:
-        # rotations+flips
         for k in range(4):
             r = np.rot90(pat, k)
-            train_set.add(r.tobytes())
-            train_set.add(np.fliplr(r).tobytes())
+            rf_set.add(r.tobytes())
+            rf_set.add(np.fliplr(r).tobytes())
+    # build translation-invariant set (cyclic shifts of rotated patterns)
+    ti_set = set(rf_set)
+    H, W = train_patterns[0].shape
+    for pat in train_patterns:
+        for k in range(4):
+            r = np.rot90(pat, k)
+            for dy in range(H):
+                for dx in range(W):
+                    shifted = np.roll(r, shift=(dy,dx), axis=(0,1))
+                    ti_set.add(shifted.tobytes())
     for g in grids:
+        b = g.tobytes()
+        if b not in rf_set:
+            novel_rf += 1
+        if b not in ti_set:
+            novel_ti += 1
         hist = simulate(g, steps=max_steps)
         per = detect_period(hist)
-        # died out completely if final state sum is zero
         if hist[-1].sum() == 0:
             results['died_out'] += 1
         else:
-            # classify survivors by period if detected
             if per == 1:
                 results['still_life'] += 1
             elif per and per > 1:
                 results[f'oscillator_p{per}'] += 1
             else:
                 results['survived_unknown'] += 1
-        # novelty
-        if g.tobytes() not in train_set:
-            novel += 1
     results['total'] = N
-    results['novel_frac'] = novel / N
+    results['novel_frac'] = novel_rf / N
+    results['novel_frac_trans_inv'] = novel_ti / N
     return results

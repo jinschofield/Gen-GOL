@@ -9,7 +9,7 @@ trained_ckpt="checkpoints/best_so_far.pt"
 out_csv="eval_sweep_multibase.csv"
 
 # header
-echo "threshold,class_label,direction,trained_cond,trained_unc,trained_imp,baseline_cond,baseline_unc,baseline_imp,novel_trained_cond,novel_trained_unc,novel_baseline_cond,novel_baseline_unc,novel_random" > "$out_csv"
+echo "threshold,class_label,direction,trained_cond,trained_unc,trained_imp,baseline_cond,baseline_unc,baseline_imp,novel_trained_cond,novel_trained_unc,novel_baseline_cond,novel_baseline_unc,novel_random,novel_trained_cond_trans_inv,novel_trained_unc_trans_inv,novel_baseline_cond_trans_inv,novel_baseline_unc_trans_inv,novel_random_trans_inv" > "$out_csv"
 
 for th in "${thresholds[@]}"; do
   baseline_model="baseline_models/model_final_${th}.pt"
@@ -40,13 +40,19 @@ gc() { echo "$out" | grep -Eo "${1}: [-0-9.]+"; }
     imp_t=$(awk "BEGIN {print $key_tc - $key_tnc}")
     imp_b=$(awk "BEGIN {print $key_bc - $key_bnc}")
     # novel fractions from each section
-d1=$(echo "$out" | grep -A1 "Trained+conditioned" | tail -1 | grep -Eo "novel_frac: [-0-9.]+" | cut -d':' -f2)
+    d1=$(echo "$out" | grep -A1 "Trained+conditioned" | tail -1 | grep -Eo "novel_frac: [-0-9.]+" | cut -d':' -f2)
     d2=$(echo "$out" | grep -A1 "Trained+unconditioned" | tail -1 | grep -Eo "novel_frac: [-0-9.]+" | cut -d':' -f2)
     d3=$(echo "$out" | grep -A1 "Untrained+conditioned" | tail -1 | grep -Eo "novel_frac: [-0-9.]+" | cut -d':' -f2)
     d4=$(echo "$out" | grep -A1 "Untrained+unconditioned" | tail -1 | grep -Eo "novel_frac: [-0-9.]+" | cut -d':' -f2)
     novel_r=$(gc novel_frac)
+    # translation-invariant novel fractions
+    d1_ti=$(echo "$out" | grep -A1 "Trained+conditioned" | tail -1 | grep -Eo "novel_frac_trans_inv: [-0-9.]+" | cut -d':' -f2)
+    d2_ti=$(echo "$out" | grep -A1 "Trained+unconditioned" | tail -1 | grep -Eo "novel_frac_trans_inv: [-0-9.]+" | cut -d':' -f2)
+    d3_ti=$(echo "$out" | grep -A1 "Untrained+conditioned" | tail -1 | grep -Eo "novel_frac_trans_inv: [-0-9.]+" | cut -d':' -f2)
+    d4_ti=$(echo "$out" | grep -A1 "Untrained+unconditioned" | tail -1 | grep -Eo "novel_frac_trans_inv: [-0-9.]+" | cut -d':' -f2)
+    novel_r_ti=$(gc novel_frac_trans_inv)
     # append to CSV
-    echo "$th,$cl,$direction,$key_tc,$key_tnc,$imp_t,$key_bc,$key_bnc,$imp_b,$d1,$d2,$d3,$d4,$rk" >> "$out_csv"
+    echo "$th,$cl,$direction,$key_tc,$key_tnc,$imp_t,$key_bc,$key_bnc,$imp_b,$d1,$d2,$d3,$d4,$rk,$d1_ti,$d2_ti,$d3_ti,$d4_ti,$novel_r_ti" >> "$out_csv"
     echo "[DONE] th=$th, class=$cl"
   done
 done

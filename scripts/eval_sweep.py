@@ -80,7 +80,10 @@ if __name__ == '__main__':
                 'baseline_cond_pct','baseline_unc_pct','baseline_imp_pct',
                 'novel_trained_cond_pct','novel_trained_unc_pct',
                 'novel_baseline_cond_pct','novel_baseline_unc_pct',
-                'novel_random_pct'
+                'novel_random_pct',
+                'novel_trained_cond_trans_inv_pct','novel_trained_unc_trans_inv_pct',
+                'novel_baseline_cond_trans_inv_pct','novel_baseline_unc_trans_inv_pct',
+                'novel_random_trans_inv_pct'
             ])
         # percentage base
         n = args.num_samples
@@ -103,6 +106,11 @@ if __name__ == '__main__':
                 bc_novel = bc.get('novel_frac', 0.0)
                 bnc_novel = bnc.get('novel_frac', 0.0)
                 rand_novel = rand.get('novel_frac', 0.0)
+                trc_ti = trc.get('novel_frac_trans_inv', 0.0)
+                trnc_ti = trnc.get('novel_frac_trans_inv', 0.0)
+                bc_ti = bc.get('novel_frac_trans_inv', 0.0)
+                bnc_ti = bnc.get('novel_frac_trans_inv', 0.0)
+                rand_ti = rand.get('novel_frac_trans_inv', 0.0)
                 # convert counts to percentages
                 trc_pct = trc_val / n * 100.0
                 trnc_pct = trnc_val / n * 100.0
@@ -117,12 +125,20 @@ if __name__ == '__main__':
                 novel_bc_pct = bc_novel * 100.0
                 novel_bnc_pct = bnc_novel * 100.0
                 novel_rand_pct = rand_novel * 100.0
+                novel_trc_ti_pct = trc_ti * 100.0
+                novel_trnc_ti_pct = trnc_ti * 100.0
+                novel_bc_ti_pct = bc_ti * 100.0
+                novel_bnc_ti_pct = bnc_ti * 100.0
+                novel_rand_ti_pct = rand_ti * 100.0
                 writer.writerow([
                     th, cl, direction,
                     trc_pct, trnc_pct, imp_pct,
                     bc_pct, bnc_pct, imp_b_pct,
                     novel_trc_pct, novel_trnc_pct,
                     novel_bc_pct, novel_bnc_pct,
-                    novel_rand_pct
+                    novel_rand_pct,
+                    novel_trc_ti_pct, novel_trnc_ti_pct,
+                    novel_bc_ti_pct, novel_bnc_ti_pct,
+                    novel_rand_ti_pct
                 ])
     print(f"Sweep complete. Results written to {args.output_csv}")
