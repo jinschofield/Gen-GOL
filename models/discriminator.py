@@ -14,7 +14,7 @@ class Discriminator(nn.Module):
         for mult in channel_mults:
             out_c = base_channels * mult
             layers.append(nn.Conv2d(last_c, out_c, kernel_size=4, stride=2, padding=1))
-            layers.append(nn.LeakyReLU(0.2, inplace=True))
+            layers.append(nn.LeakyReLU(0.2, inplace=False))
             last_c = out_c
         self.conv = nn.Sequential(*layers)
         # final classification layer
