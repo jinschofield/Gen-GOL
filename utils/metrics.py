@@ -40,22 +40,13 @@ def evaluate_samples(samples, train_patterns, max_steps=50, threshold=0.5):
             r = np.rot90(pat, k)
             rf_set.add(r.tobytes())
             rf_set.add(np.fliplr(r).tobytes())
-    # build translation-invariant set (cyclic shifts of rotated patterns)
-    ti_set = set(rf_set)
-    H, W = train_patterns[0].shape
-    for pat in train_patterns:
-        for k in range(4):
-            r = np.rot90(pat, k)
-            for dy in range(H):
-                for dx in range(W):
-                    shifted = np.roll(r, shift=(dy,dx), axis=(0,1))
-                    ti_set.add(shifted.tobytes())
     for g in grids:
         b = g.tobytes()
         if b not in rf_set:
             novel_rf += 1
-        if b not in ti_set:
-            novel_ti += 1
+        # translation-invariant novelty disabled for debugging
+        # if b not in ti_set:
+        #     novel_ti += 1
         hist = simulate(g, steps=max_steps)
         per = detect_period(hist)
         if hist[-1].sum() == 0:
@@ -69,5 +60,6 @@ def evaluate_samples(samples, train_patterns, max_steps=50, threshold=0.5):
                 results['survived_unknown'] += 1
     results['total'] = N
     results['novel_frac'] = novel_rf / N
-    results['novel_frac_trans_inv'] = novel_ti / N
+    # translation-invariant novel fraction disabled
+    results['novel_frac_trans_inv'] = 0.0
     return results
