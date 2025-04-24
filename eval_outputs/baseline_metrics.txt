@@ -1,3 +1,4 @@
-survived_unknown: 64
+died_out: 57
+survived_unknown: 7
 total: 64
 novel_frac: 1.0

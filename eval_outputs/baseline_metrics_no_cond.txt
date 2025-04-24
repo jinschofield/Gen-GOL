@@ -1,3 +1,6 @@
-survived_unknown: 64
+survived_unknown: 26
+still_life: 15
+died_out: 12
+oscillator_p2: 11
 total: 64
 novel_frac: 1.0
