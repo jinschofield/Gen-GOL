@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv, os, subprocess
+import sys  # use same interpreter and unbuffered mode
 
 """
 Python wrapper to sweep a single threshold without baseline testing.
@@ -28,7 +29,7 @@ def main():
                 direction = 'alive' if cl == 1 else 'dead'
                 print(f"[sweep] Start: threshold={th}, class={direction}", flush=True)
                 cmd = [
-                    "python3", "scripts/eval_single_threshold.py",
+                    sys.executable, "-u", "scripts/eval_single_threshold.py",
                     "--data_dir", "data",
                     "--checkpoint", ckpt,
                     "--threshold", str(th),
