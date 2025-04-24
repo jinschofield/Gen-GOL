@@ -7,7 +7,7 @@ cd "$(dirname "$0")"/..
 
 # settings
 thresholds=(0.01 0.1 0.3 0.5)
-trained_ckpt="checkpoints/model_final.pt"
+trained_ckpt="checkpoints/model_final_ema.pt"
 baseline_ckpt="$trained_ckpt"
 out_csv="eval_sweep_single_baseline_ema.csv"
 
