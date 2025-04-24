@@ -6,6 +6,7 @@ Python wrapper to sweep a single threshold without baseline testing.
 """
 
 def main():
+    print("[sweep] Starting no-baseline sweep", flush=True)
     thresholds = [0.3]
     ckpt = "finished_models/adversarial_0.01.pt"
     out_csv = "finished_models/eval_sweep_no_baseline_adversarial_0.01.csv"
@@ -25,6 +26,7 @@ def main():
         for th in thresholds:
             for cl in (1, 0):
                 direction = 'alive' if cl == 1 else 'dead'
+                print(f"[sweep] Start: threshold={th}, class={direction}", flush=True)
                 cmd = [
                     "python3", "scripts/eval_single_threshold.py",
                     "--data_dir", "data",
@@ -43,6 +45,7 @@ def main():
                     if line.startswith("threshold"):  # skip header
                         continue
                     writer.writerow(line.split(","))
+                print(f"[sweep] Done: threshold={th}, class={direction}", flush=True)
 
     print(f"Sweep complete → {out_csv}")
 
