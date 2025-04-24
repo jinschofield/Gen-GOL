@@ -7,9 +7,11 @@ from torch.utils.data import DataLoader, Subset
 from data.dataset import GolDataset
 from models.unet import UNet
 from models.diffusion import Diffusion
+from models.discriminator import Discriminator
 import argparse
 import copy
 from torch.nn.utils import clip_grad_norm_
+import torch.nn.functional as F
 
 def main():
     parser = argparse.ArgumentParser()
@@ -30,6 +32,8 @@ def main():
     parser.add_argument('--lr_scheduler', type=str, default='none', choices=['none','cosine'], help='learning rate scheduler')
     parser.add_argument('--ema_decay', type=float, default=0.995, help='EMA decay for model weights')
     parser.add_argument('--noise_prob', type=float, default=0.0, help='probability of random cell flips as data augmentation')
+    parser.add_argument('--adv_weight', type=float, default=0.0, help='weight for adversarial loss')
+    parser.add_argument('--fm_weight', type=float, default=0.0, help='weight for feature-matching loss')
     parser.add_argument('--cf_prob', type=float, default=0.1, help='probability to drop conditioning (classifier-free)')
     parser.add_argument('--resume', type=str, default=None, help='path to checkpoint to resume training from')
     parser.add_argument('--val_split', type=float, default=0.1, help='fraction of data for validation (0=no val)')
@@ -97,6 +101,12 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     ema_decay = args.ema_decay
 
+    # setup adversarial/feature-matching components
+    disc = Discriminator(in_channels=1).to(args.device)
+    disc_opt = torch.optim.Adam(disc.parameters(), lr=args.lr)
+    adv_weight = args.adv_weight
+    fm_weight = args.fm_weight
+
     # setup learning rate scheduler if requested
     scheduler = None
     if args.lr_scheduler == 'cosine':
@@ -123,7 +133,34 @@ def main():
             else:
                 c_input = c
             t = torch.randint(0, diffusion.timesteps, (x.size(0),), device=args.device).long()
-            loss = diffusion.p_losses(model, x, t, c_input)
+            # compute diffusion loss
+            diff_loss = diffusion.p_losses(model, x, t, c_input)
+            # adversarial and feature-matching
+            if adv_weight > 0 or fm_weight > 0:
+                # single-step reconstruction for GAN
+                noise = torch.randn_like(x)
+                x_noisy = diffusion.q_sample(x, t, noise)
+                pred_noise = model(x_noisy, t, c_input)
+                sqrt_alpha = diffusion.sqrt_alphas_cumprod[t].view(-1,1,1,1)
+                sqrt_om_alpha = diffusion.sqrt_one_minus_alphas_cumprod[t].view(-1,1,1,1)
+                x0_pred = (x_noisy - sqrt_om_alpha * pred_noise) / sqrt_alpha
+                # train discriminator
+                real = x
+                fake = x0_pred.detach()
+                real_prob, real_feats = disc(real)
+                fake_prob, fake_feats = disc(fake)
+                loss_d = - (torch.log(real_prob + 1e-8).mean() + torch.log(1 - fake_prob + 1e-8).mean())
+                disc_opt.zero_grad(); loss_d.backward(); disc_opt.step()
+                # generator adversarial/feature-matching losses
+                fake_prob_g, fake_feats_g = disc(x0_pred)
+                adv_loss = - torch.log(fake_prob_g + 1e-8).mean() if adv_weight > 0 else 0
+                if fm_weight > 0 and real_feats:
+                    fm_loss = sum(F.l1_loss(fg, fr) for fg, fr in zip(fake_feats_g, real_feats)) / len(real_feats)
+                else:
+                    fm_loss = 0
+                loss = diff_loss + adv_weight * adv_loss + fm_weight * fm_loss
+            else:
+                loss = diff_loss
             loss.backward()
             # gradient clipping
             if args.grad_clip > 0:
