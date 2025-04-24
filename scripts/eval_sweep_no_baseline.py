@@ -40,11 +40,13 @@ def main():
                     "--eta", "0.0",
                     "--output_csv", "/dev/stdout"
                 ]
-                proc = subprocess.run(cmd, capture_output=True, text=True)
-                for line in proc.stdout.splitlines():
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                for line in proc.stdout:
+                    print("[eval] " + line, end="", flush=True)
                     if line.startswith("threshold"):  # skip header
                         continue
-                    writer.writerow(line.split(","))
+                    writer.writerow(line.strip().split(","))
+                proc.wait()
                 print(f"[sweep] Done: threshold={th}, class={direction}", flush=True)
 
     print(f"Sweep complete → {out_csv}")

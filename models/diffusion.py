@@ -110,7 +110,8 @@ class Diffusion:
     @torch.no_grad()
     def sample(self, model, shape, c=None):
         x = torch.randn(shape, device=self.device)
-        for i in reversed(range(self.timesteps)):
+        for idx, i in enumerate(reversed(range(self.timesteps)), 1):
+            print(f"[diffusion] step {idx}/{self.timesteps}", flush=True)
             t = torch.full((shape[0],), i, device=self.device, dtype=torch.long)
             x = self.p_sample(model, x, t, c)
         return x
@@ -119,7 +120,8 @@ class Diffusion:
     def ddim_sample(self, model, shape, eta: float = 0.0, c=None):
         """Deterministic DDIM sampling (eta=0 for deterministic)."""
         x = torch.randn(shape, device=self.device)
-        for i in reversed(range(self.timesteps)):
+        for idx, i in enumerate(reversed(range(self.timesteps)), 1):
+            print(f"[ddim sampling] step {idx}/{self.timesteps}", flush=True)
             t = torch.full((shape[0],), i, device=self.device, dtype=torch.long)
             eps = model(x, t, c)
             alpha_t = self.alphas_cumprod[t].view(-1,1,1,1)
