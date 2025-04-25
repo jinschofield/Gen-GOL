@@ -157,6 +157,8 @@ def main():
                 pil_frames.append(np.array(img))
             clip = ImageSequenceClip(pil_frames, fps=5)
             clips.append(clip)
+        # add aggregated life category (all samples except died_out)
+        counts['life'] = args.num_samples - counts.get('died_out', 0)
         # summary CSV
         summary_path = os.path.join(cond_dir, f'summary_{label}_sz{args.grid_size}_notypecond.csv')
         with open(summary_path, 'w', newline='') as f:
@@ -183,7 +185,7 @@ def main():
         grid_gif = clips_array(grid_clips)
         grid_gif.write_gif(os.path.join(cond_dir, f'grid_{label}_sz{args.grid_size}_notypecond.gif'), program='imageio')
         all_results[label] = counts
-    # compute differences from unconditioned
+    # compute differences from unconditioned, include life category
     cats = set().union(*(r.keys() for r in all_results.values()))
     diff_path = os.path.join(args.out_dir, f'diff_counts_sz{args.grid_size}_notypecond.csv')
     with open(diff_path, 'w', newline='') as f:
