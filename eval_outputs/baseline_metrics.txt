@@ -1,4 +1,5 @@
-died_out: 57
-survived_unknown: 7
+died_out: 59
+survived_unknown: 5
 total: 64
 novel_frac: 1.0
+novel_frac_trans_inv: 0.0

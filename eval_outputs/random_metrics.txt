@@ -1,3 +1,4 @@
 survived_unknown: 64
 total: 64
 novel_frac: 1.0
+novel_frac_trans_inv: 0.0

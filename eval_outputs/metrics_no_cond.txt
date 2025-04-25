@@ -1,6 +1,7 @@
-oscillator_p2: 13
-died_out: 9
 survived_unknown: 35
-still_life: 7
+died_out: 13
+still_life: 9
+oscillator_p2: 7
 total: 64
-novel_frac: 1.0
+novel_frac: 0.828125
+novel_frac_trans_inv: 0.0

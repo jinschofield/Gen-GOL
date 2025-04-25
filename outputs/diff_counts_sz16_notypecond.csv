@@ -1,0 +1,9 @@
+category,unconditioned,conditioned_alive,conditioned_dead,diff_alive,diff_dead
+glider,4,3,1,-1,-3
+died_out,37,32,63,-5,26
+life,27,32,1,5,-26
+others,2,0,0,-2,-2
+oscillator,10,11,0,1,-10
+spaceship,0,0,0,0,0
+oscillator_period_2,10,11,0,1,-10
+still_life,15,21,1,6,-14
