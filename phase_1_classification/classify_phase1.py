@@ -131,10 +131,14 @@ def main():
             pil_frames = []
             # scale up frames for visibility
             scale = args.scale
+            # choose larger font for labels
+            font_size = int(scale * 1.5)
             try:
-                font = ImageFont.truetype('DejaVuSans.ttf', scale)
+                font = ImageFont.truetype('DejaVuSans.ttf', font_size)
             except Exception:
                 font = ImageFont.load_default()
+            # border width between grid cells
+            border_width = max(2, scale // 10)
             for f_rgb in frames:
                 img = Image.fromarray(f_rgb)
                 img = img.resize((img.width*scale, img.height*scale), Image.NEAREST)
@@ -147,8 +151,8 @@ def main():
                 y = img.height - text_h - 2
                 draw.rectangle([(x-1, y-1), (x+text_w+1, y+text_h+1)], fill=(0,0,0))
                 draw.text((x, y), label_str, fill=(255,255,255), font=font)
-                # draw 1px black border around frame
-                draw.rectangle([(0, 0), (img.width-1, img.height-1)], outline=(0,0,0), width=1)
+                # draw border around frame
+                draw.rectangle([(0, 0), (img.width-1, img.height-1)], outline=(0,0,0), width=border_width)
                 pil_frames.append(np.array(img))
             clip = ImageSequenceClip(pil_frames, fps=5)
             clips.append(clip)
