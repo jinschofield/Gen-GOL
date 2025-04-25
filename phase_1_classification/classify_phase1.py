@@ -4,8 +4,8 @@ import sys
 import argparse
 import torch
 import numpy as np
-from moviepy.editor import ImageSequenceClip, clips_array, TextClip, CompositeVideoClip
-from PIL import Image
+from moviepy.editor import ImageSequenceClip, clips_array
+from PIL import Image, ImageDraw, ImageFont
 import csv
 import math
 
@@ -118,9 +118,19 @@ def main():
                 label_str = 'spaceship'
             # build labeled clip
             frames = [np.stack([((f*255).astype(np.uint8))]*3, axis=2) for f in history]
-            base_clip = ImageSequenceClip(frames, fps=5)
-            txt = TextClip(label_str, fontsize=12, color='white', bg_color='black').set_duration(base_clip.duration).set_position(('center','bottom'))
-            clip = CompositeVideoClip([base_clip, txt])
+            # overlay text label onto each frame via PIL
+            pil_frames = []
+            font = ImageFont.load_default()
+            for f_rgb in frames:
+                img = Image.fromarray(f_rgb)
+                draw = ImageDraw.Draw(img)
+                text_w, text_h = draw.textsize(label_str, font=font)
+                x = (img.width - text_w) // 2
+                y = img.height - text_h - 2
+                draw.rectangle([(x-1, y-1), (x+text_w+1, y+text_h+1)], fill=(0,0,0))
+                draw.text((x, y), label_str, fill=(255,255,255), font=font)
+                pil_frames.append(np.array(img))
+            clip = ImageSequenceClip(pil_frames, fps=5)
             clips.append(clip)
         # summary CSV
         summary_path = os.path.join(cond_dir, f'summary_{label}_sz{args.grid_size}_notypecond.csv')
