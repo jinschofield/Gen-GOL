@@ -6,6 +6,7 @@ Categories: died_out, still_life, oscillator_period_2, glider, others
 """
 import os, sys, csv, argparse, random
 import numpy as np
+import time
 
 # ensure imports
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -54,7 +55,10 @@ def main():
             np.save(fpath, arr)
             saved.append((fpath, cat))
             counts[cat] += 1
-            print(f" {cat}: {counts[cat]}/{args.target_count}", end='\r')
+            # detailed progress status with timestamp
+            status = " | ".join([f"{c}: {counts[c]}/{args.target_count}" for c in cats])
+            timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+            print(f"\r[{timestamp}] Progress: {status}", end='', flush=True)
 
     # write labels CSV
     with open(args.label_csv, 'w', newline='') as f:
