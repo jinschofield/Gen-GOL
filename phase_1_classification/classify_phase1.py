@@ -4,9 +4,10 @@ import sys
 import argparse
 import torch
 import numpy as np
-from moviepy.editor import ImageSequenceClip
+from moviepy.editor import ImageSequenceClip, clips_array
 from PIL import Image
 import csv
+import math
 
 # allow imports from the parent Gen-GOL repo
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +62,8 @@ def main():
               'others': 0, 'died_out': 0}
     gifs_dir = os.path.join(args.out_dir, 'gifs')
     os.makedirs(gifs_dir, exist_ok=True)
+    # collect clips for grid
+    clips = []
 
     # classify each sample
     for idx in range(bin_samples.shape[0]):
@@ -88,16 +91,17 @@ def main():
             counts['glider'] += 1
         if detectors.detect_spaceships(grid):
             counts['spaceship'] += 1
+        # build clip for this sample
+        frames = []
+        for frame in history:
+            gray = (frame * 255).astype(np.uint8)
+            rgb = np.stack([gray] * 3, axis=2)
+            frames.append(rgb)
+        clip = ImageSequenceClip(frames, fps=5)
+        clips.append(clip)
         # save gif if alive
         if history[-1].sum() > 0:
-            # convert history frames to RGB uint8 images for gif
-            frames = []
-            for frame in history:
-                gray = (frame * 255).astype(np.uint8)
-                rgb = np.stack([gray] * 3, axis=2)
-                frames.append(rgb)
             gif_path = os.path.join(gifs_dir, f'sample_{idx}.gif')
-            clip = ImageSequenceClip(frames, fps=5)
             clip.write_gif(gif_path, program='imageio')
 
     # save summary CSV
@@ -107,6 +111,28 @@ def main():
         writer.writerow(['category', 'count'])
         for cat, cnt in counts.items():
             writer.writerow([cat, cnt])
+
+    # assemble all clips into a grid GIF
+    num_clips = len(clips)
+    rows = int(math.sqrt(num_clips)) or 1
+    cols = math.ceil(num_clips / rows)
+    w, h = clips[0].size
+    fps = clips[0].fps
+    duration = clips[0].duration
+    num_frames = int(duration * fps)
+    blank_frame = np.zeros((h, w, 3), dtype=np.uint8)
+    blank_clip = ImageSequenceClip([blank_frame] * num_frames, fps=fps)
+    grid_clips = []
+    for i in range(rows):
+        row_clips = []
+        for j in range(cols):
+            idx2 = i * cols + j
+            row_clips.append(clips[idx2] if idx2 < num_clips else blank_clip)
+        grid_clips.append(row_clips)
+    grid = clips_array(grid_clips)
+    grid_path = os.path.join(args.out_dir, 'grid.gif')
+    grid.write_gif(grid_path, program='imageio')
+    print(f'Grid GIF saved to {grid_path}')
 
     print('Classification complete:')
     for cat, cnt in counts.items():
