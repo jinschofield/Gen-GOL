@@ -4,7 +4,13 @@ Phase 2 - Step 2:
 Train a conditional diffusion UNet on 32×32 patterns with class embeddings.
 Produces checkpoints in `phase2_results/`.
 """
-import os, argparse, random
+import os, sys, argparse, random
+script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.abspath(os.path.join(script_dir, '..'))
+# ensure repo root on import path
+sys.path.insert(0, repo_root)
+sys.path.insert(0, os.path.join(repo_root, 'phase_1_classification', 'utils'))
+
 import torch
 from torch.utils.data import DataLoader
 from phase_2_conditional_diffusion.category_dataset import CategoryDataset
@@ -48,8 +54,9 @@ def main():
     loader = DataLoader(dataset, batch_size=args.batch_size,
                         shuffle=True, num_workers=4)
 
-    # model and diffusion
-    model = UNet(dropout=args.dropout).to(args.device)
+    # model and diffusion (pass dynamic number of classes to UNet)
+    num_classes = len(dataset.cat_to_idx)
+    model = UNet(dropout=args.dropout, num_classes=num_classes).to(args.device)
     diffusion = Diffusion(
         timesteps=args.timesteps,
         schedule=args.schedule,

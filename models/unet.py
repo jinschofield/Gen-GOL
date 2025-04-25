@@ -65,7 +65,7 @@ class ResidualBlock(nn.Module):
         return h + self.res_conv(x)
 
 class UNet(nn.Module):
-    def __init__(self, in_channels=1, base_channels=64, channel_mults=(1,2,4), time_emb_dim=256, dropout=0.0):
+    def __init__(self, in_channels=1, base_channels=64, channel_mults=(1,2,4), time_emb_dim=256, dropout=0.0, num_classes=5):
         super().__init__()
         self.time_emb = nn.Sequential(
             SinusoidalPosEmb(time_emb_dim),
@@ -73,8 +73,8 @@ class UNet(nn.Module):
             nn.SiLU(),
             nn.Linear(time_emb_dim*4, time_emb_dim)
         )
-        # conditional embedding for survive/die (0=die, 1=survive)
-        self.class_emb = nn.Embedding(2, time_emb_dim)
+        # conditional embedding for multi-class life-types
+        self.class_emb = nn.Embedding(num_classes, time_emb_dim)
         # dropout rate for ResidualBlock
         self.dropout = dropout
 
