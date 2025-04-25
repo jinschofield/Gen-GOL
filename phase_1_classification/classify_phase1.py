@@ -4,7 +4,7 @@ import sys
 import argparse
 import torch
 import numpy as np
-from moviepy.editor import ImageSequenceClip, clips_array
+from moviepy.editor import ImageSequenceClip, clips_array, TextClip, CompositeVideoClip
 from PIL import Image
 import csv
 import math
@@ -55,8 +55,6 @@ def main():
         cond_tag = f"{args.grid_size}_{label}_notypecond"
         cond_dir = os.path.join(args.out_dir, cond_tag)
         os.makedirs(cond_dir, exist_ok=True)
-        gifs_dir = os.path.join(cond_dir, 'gifs')
-        os.makedirs(gifs_dir, exist_ok=True)
         # sample under condition c
         shape = (args.num_samples, 1, args.grid_size, args.grid_size)
         # prepare conditioning tensor for model embedding
@@ -98,12 +96,32 @@ def main():
                 counts['glider'] += 1
             if detectors.detect_spaceships(grid):
                 counts['spaceship'] += 1
-            # build clip
+            # determine classification label for overlay
+            if history[-1].sum() == 0:
+                label_str = 'died_out'
+            else:
+                per2 = None
+                first2 = history[0]
+                for t2 in range(1, len(history)):
+                    if np.array_equal(history[t2], first2):
+                        per2 = t2
+                        break
+                if per2 == 1:
+                    label_str = 'still_life'
+                elif per2 and per2 > 1:
+                    label_str = 'oscillator'
+                else:
+                    label_str = 'others'
+            if detectors.detect_gliders(grid):
+                label_str = 'glider'
+            elif detectors.detect_spaceships(grid):
+                label_str = 'spaceship'
+            # build labeled clip
             frames = [np.stack([((f*255).astype(np.uint8))]*3, axis=2) for f in history]
-            clip = ImageSequenceClip(frames, fps=5)
+            base_clip = ImageSequenceClip(frames, fps=5)
+            txt = TextClip(label_str, fontsize=12, color='white', bg_color='black').set_duration(base_clip.duration).set_position(('center','bottom'))
+            clip = CompositeVideoClip([base_clip, txt])
             clips.append(clip)
-            if history[-1].sum() > 0:
-                clip.write_gif(os.path.join(gifs_dir, f'sample_{idx}.gif'), program='imageio')
         # summary CSV
         summary_path = os.path.join(cond_dir, f'summary_{label}_sz{args.grid_size}_notypecond.csv')
         with open(summary_path, 'w', newline='') as f:
@@ -122,7 +140,11 @@ def main():
         blank = np.zeros((h_img, w_img, 3), dtype=np.uint8)
         blank_clip = ImageSequenceClip([blank]*nf, fps=fps)
         grid_clips = [[clips[i*cols+j] if i*cols+j < num else blank_clip for j in range(cols)] for i in range(rows)]
-        grid_gif = clips_array(grid_clips)
+        # assemble grid with 1px black outlines between samples
+        outline = 1
+        rows_width = [outline] * (rows - 1)
+        cols_width = [outline] * (cols - 1)
+        grid_gif = clips_array(grid_clips, rows_width=rows_width, cols_width=cols_width, bg_color=(0,0,0))
         grid_gif.write_gif(os.path.join(cond_dir, f'grid_{label}_sz{args.grid_size}_notypecond.gif'), program='imageio')
         all_results[label] = counts
     # compute differences from unconditioned
