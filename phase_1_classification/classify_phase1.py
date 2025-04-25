@@ -132,6 +132,8 @@ def main():
                 y = img.height - text_h - 2
                 draw.rectangle([(x-1, y-1), (x+text_w+1, y+text_h+1)], fill=(0,0,0))
                 draw.text((x, y), label_str, fill=(255,255,255), font=font)
+                # draw 1px black border around frame
+                draw.rectangle([(0, 0), (img.width-1, img.height-1)], outline=(0,0,0), width=1)
                 pil_frames.append(np.array(img))
             clip = ImageSequenceClip(pil_frames, fps=5)
             clips.append(clip)
@@ -153,11 +155,8 @@ def main():
         blank = np.zeros((h_img, w_img, 3), dtype=np.uint8)
         blank_clip = ImageSequenceClip([blank]*nf, fps=fps)
         grid_clips = [[clips[i*cols+j] if i*cols+j < num else blank_clip for j in range(cols)] for i in range(rows)]
-        # assemble grid with 1px black outlines between samples
-        outline = 1
-        rows_width = [outline] * (rows - 1)
-        cols_width = [outline] * (cols - 1)
-        grid_gif = clips_array(grid_clips, rows_width=rows_width, cols_width=cols_width, bg_color=(0,0,0))
+        # assemble grid of bordered clips
+        grid_gif = clips_array(grid_clips)
         grid_gif.write_gif(os.path.join(cond_dir, f'grid_{label}_sz{args.grid_size}_notypecond.gif'), program='imageio')
         all_results[label] = counts
     # compute differences from unconditioned
