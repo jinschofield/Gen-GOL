@@ -12,6 +12,7 @@ import csv
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.insert(0, repo_root)
+sys.path.insert(0, os.path.join(script_dir, 'utils'))
 
 from models.unet import UNet
 from models.diffusion import Diffusion
