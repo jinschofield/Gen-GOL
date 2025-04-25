@@ -124,7 +124,10 @@ def main():
             for f_rgb in frames:
                 img = Image.fromarray(f_rgb)
                 draw = ImageDraw.Draw(img)
-                text_w, text_h = font.getsize(label_str)
+                # compute text width and height via textbbox
+                bbox = draw.textbbox((0, 0), label_str, font=font)
+                text_w = bbox[2] - bbox[0]
+                text_h = bbox[3] - bbox[1]
                 x = (img.width - text_w) // 2
                 y = img.height - text_h - 2
                 draw.rectangle([(x-1, y-1), (x+text_w+1, y+text_h+1)], fill=(0,0,0))
