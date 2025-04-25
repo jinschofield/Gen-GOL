@@ -59,10 +59,15 @@ def main():
         os.makedirs(gifs_dir, exist_ok=True)
         # sample under condition c
         shape = (args.num_samples, 1, args.grid_size, args.grid_size)
-        if args.sample_method == 'ancestral':
-            samples = diffusion.sample(model, shape, c=c)
+        # prepare conditioning tensor for model embedding
+        if c is None:
+            c_tensor = None
         else:
-            samples = diffusion.ddim_sample(model, shape, eta=args.eta, c=c)
+            c_tensor = torch.full((args.num_samples,), c, device=args.device, dtype=torch.long)
+        if args.sample_method == 'ancestral':
+            samples = diffusion.sample(model, shape, c=c_tensor)
+        else:
+            samples = diffusion.ddim_sample(model, shape, eta=args.eta, c=c_tensor)
         samples = torch.clamp(samples, 0.0, 1.0)
         bin_samples = (samples > args.threshold).float().cpu().numpy()
         # classify
