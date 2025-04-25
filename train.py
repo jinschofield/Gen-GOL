@@ -45,6 +45,8 @@ def main():
     parser.add_argument('--grid_size', type=int, default=32,
                         help='grid size for random boards when using random baseline')
     parser.add_argument('--guidance_scale', type=float, default=1.0, help='guidance scale for diffusion model')
+    parser.add_argument('--dropout', type=float, default=0.0, help='dropout rate for UNet residual blocks')
+    parser.add_argument('--weight_decay', type=float, default=0.0, help='weight decay for optimizer')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
@@ -78,7 +80,7 @@ def main():
         train_loader = DataLoader(full_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
         val_loader = None
 
-    model = UNet().to(args.device)
+    model = UNet(dropout=args.dropout).to(args.device)
     # resume from checkpoint or save initial (untrained) model
     if args.resume:
         if os.path.isfile(args.resume):
@@ -104,7 +106,7 @@ def main():
                          ssim_weight=args.ssim_weight, 
                          bce_weight=args.bce_weight,
                          mae_weight=args.mae_weight)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     ema_decay = args.ema_decay
 
     # setup adversarial/feature-matching components

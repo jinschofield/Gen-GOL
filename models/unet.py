@@ -17,7 +17,7 @@ class SinusoidalPosEmb(nn.Module):
         return emb
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, time_emb_dim, groups=8):
+    def __init__(self, in_channels, out_channels, time_emb_dim, groups=8, dropout=0.0):
         super().__init__()
         # adjust group count so num_channels divisible by num_groups
         num_groups1 = min(groups, in_channels)
@@ -38,6 +38,9 @@ class ResidualBlock(nn.Module):
         # FiLM layers for conditional scaling/shifting
         self.film1 = nn.Linear(time_emb_dim, in_channels * 2)
         self.film2 = nn.Linear(time_emb_dim, out_channels * 2)
+        # dropout: spatial after conv, MLP on time embed
+        self.dropout_conv = nn.Dropout2d(dropout)
+        self.dropout_mlp = nn.Dropout(dropout)
 
     def forward(self, x, t):
         # first normalization + FiLM
@@ -47,7 +50,9 @@ class ResidualBlock(nn.Module):
         h = h * (1 + gamma1.unsqueeze(-1).unsqueeze(-1)) + beta1.unsqueeze(-1).unsqueeze(-1)
         h = F.silu(h)
         h = self.conv1(h)
+        h = self.dropout_conv(h)
         time_emb = self.time_mlp(t).unsqueeze(-1).unsqueeze(-1)
+        time_emb = self.dropout_mlp(time_emb)
         h = h + time_emb
         # second normalization + FiLM
         h = self.norm2(h)
@@ -56,10 +61,11 @@ class ResidualBlock(nn.Module):
         h = h * (1 + gamma2.unsqueeze(-1).unsqueeze(-1)) + beta2.unsqueeze(-1).unsqueeze(-1)
         h = F.silu(h)
         h = self.conv2(h)
+        h = self.dropout_conv(h)
         return h + self.res_conv(x)
 
 class UNet(nn.Module):
-    def __init__(self, in_channels=1, base_channels=64, channel_mults=(1,2,4), time_emb_dim=256):
+    def __init__(self, in_channels=1, base_channels=64, channel_mults=(1,2,4), time_emb_dim=256, dropout=0.0):
         super().__init__()
         self.time_emb = nn.Sequential(
             SinusoidalPosEmb(time_emb_dim),
@@ -69,18 +75,20 @@ class UNet(nn.Module):
         )
         # conditional embedding for survive/die (0=die, 1=survive)
         self.class_emb = nn.Embedding(2, time_emb_dim)
+        # dropout rate for ResidualBlock
+        self.dropout = dropout
 
         # Downsampling
         channels = [base_channels * m for m in channel_mults]
         self.downs = nn.ModuleList()
         prev_ch = in_channels
         for ch in channels:
-            self.downs.append(ResidualBlock(prev_ch, ch, time_emb_dim))
+            self.downs.append(ResidualBlock(prev_ch, ch, time_emb_dim, dropout=dropout))
             self.downs.append(nn.Conv2d(ch, ch, kernel_size=4, stride=2, padding=1))
             prev_ch = ch
 
         # Bottleneck
-        self.bottleneck = ResidualBlock(prev_ch, prev_ch, time_emb_dim)
+        self.bottleneck = ResidualBlock(prev_ch, prev_ch, time_emb_dim, dropout=dropout)
 
         # Upsampling path
         self.ups = nn.ModuleList()
@@ -88,12 +96,12 @@ class UNet(nn.Module):
             # upsample from prev_ch to ch channels
             self.ups.append(nn.ConvTranspose2d(prev_ch, ch, kernel_size=4, stride=2, padding=1))
             # after upsample, feature maps have `ch` channels; skip connection has `ch` channels -> total 2*ch
-            self.ups.append(ResidualBlock(ch * 2, ch, time_emb_dim))
+            self.ups.append(ResidualBlock(ch * 2, ch, time_emb_dim, dropout=dropout))
             # update prev_ch to current output channels
             prev_ch = ch
 
         # Final layers: a ResidualBlock then a 1x1 conv
-        self.final_res_block = ResidualBlock(prev_ch, prev_ch, time_emb_dim)
+        self.final_res_block = ResidualBlock(prev_ch, prev_ch, time_emb_dim, dropout=dropout)
         self.final_conv = nn.Conv2d(prev_ch, in_channels, kernel_size=1)
 
     def forward(self, x, t, c=None):
