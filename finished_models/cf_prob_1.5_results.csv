@@ -1,0 +1,5 @@
+threshold,class_label,direction,trained_cond_pct,trained_unc_pct,trained_imp_pct,novel_trained_cond_pct,novel_trained_unc_pct,novel_trained_cond_trans_inv_pct,novel_trained_unc_trans_inv_pct
+0.3,1,alive,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+0.3,0,dead,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+0.3,1,alive,79.6875,98.4375,-18.75,100.0,100.0,0.0,0.0
+0.3,0,dead,12.5,-3.125,15.625,100.0,100.0,0.0,0.0
