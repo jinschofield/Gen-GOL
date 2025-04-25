@@ -79,9 +79,20 @@ def main():
     ds_counts, ds_tot = classify_dataset(args.data_dir, args.timesteps)
     gen_counts, gen_tot = load_generated(args.gen_summary)
 
-    # percentages
-    ds_pct = {k: v/ds_tot*100.0 for k, v in ds_counts.items()}
+    # balanced dataset percentages (50% dead, 50% living)
+    ds_counts_live = ds_tot - ds_counts.get('died_out', 0)
+    ds_pct = {}
+    ds_pct['died_out'] = 50.0
+    for k, v in ds_counts.items():
+        if k != 'died_out':
+            ds_pct[k] = v / ds_counts_live * 50.0
+    # generated percentages (actual)
     gen_pct = {k: v/gen_tot*100.0 for k, v in gen_counts.items()}
+    # compute living-only percentages (exclude 'died_out')
+    ds_tot_live = ds_tot - ds_counts.get('died_out', 0)
+    gen_tot_live = gen_tot - gen_counts.get('died_out', 0)
+    ds_pct_live = {k: v/ds_tot_live*100.0 for k, v in ds_counts.items() if k != 'died_out'}
+    gen_pct_live = {k: v/gen_tot_live*100.0 for k, v in gen_counts.items() if k != 'died_out'}
 
     categories = sorted(set(ds_pct) | set(gen_pct))
     rows = []
@@ -98,10 +109,30 @@ def main():
         for cat, d, g, ch in rows:
             w.writerow([cat, f"{d:.2f}", f"{g:.2f}", f"{ch:.2f}"])
 
-    # print to console
-    print("Comparison of distributions:")
+    # print to console for all categories
+    print("Comparison of distributions (including dead):")
     for cat, d, g, ch in rows:
         print(f"{cat}: dataset={d:.2f}%, generated={g:.2f}%, change={ch:.2f}%")
+    # print living-only comparison
+    print("\nLiving-only distributions (dead excluded):")
+    categories_live = sorted(set(ds_pct_live) | set(gen_pct_live))
+    for cat in categories_live:
+        d = ds_pct_live.get(cat, 0.0)
+        g = gen_pct_live.get(cat, 0.0)
+        ch = g - d
+        print(f"{cat}: dataset={d:.2f}%, generated={g:.2f}%, change={ch:.2f}%")
+    # write living-only CSV
+    base, ext = os.path.splitext(args.output_csv)
+    living_csv = f"{base}_living{ext}"
+    with open(living_csv, 'w', newline='') as f2:
+        w2 = csv.writer(f2)
+        w2.writerow(['category','dataset_pct','generated_pct','pct_change'])
+        for cat in categories_live:
+            d = ds_pct_live.get(cat, 0.0)
+            g = gen_pct_live.get(cat, 0.0)
+            ch = g - d
+            w2.writerow([cat, f"{d:.2f}", f"{g:.2f}", f"{ch:.2f}"])
+    print(f"Living-only comparison saved to {living_csv}")
 
 if __name__ == '__main__':
     main()
