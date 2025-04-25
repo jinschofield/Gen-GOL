@@ -83,10 +83,11 @@ def main():
                 counts['died_out'] += 1
             else:
                 per = None
-                first = history[0]
-                for t in range(1, len(history)):
-                    if np.array_equal(history[t], first):
-                        per = t
+                # detect period of final state
+                last = history[-1]
+                for p in range(1, len(history)):
+                    if np.array_equal(history[-1-p], last):
+                        per = p
                         break
                 if per == 1:
                     counts['still_life'] += 1
@@ -108,10 +109,11 @@ def main():
                 label_str = 'died_out'
             else:
                 per2 = None
-                first2 = history[0]
-                for t2 in range(1, len(history)):
-                    if np.array_equal(history[t2], first2):
-                        per2 = t2
+                # detect label period based on final state
+                last2 = history[-1]
+                for p2 in range(1, len(history)):
+                    if np.array_equal(history[-1-p2], last2):
+                        per2 = p2
                         break
                 if per2 == 1:
                     label_str = 'still_life'
