@@ -33,6 +33,8 @@ def main():
     parser.add_argument('--eta', type=float, default=0.0)
     parser.add_argument('--threshold', type=float, default=0.5)
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--scale', type=int, default=20,
+                        help='Upscaling factor for frames (pixels per cell)')
     parser.add_argument('--out_dir', type=str, default='outputs')
     args = parser.parse_args()
 
@@ -120,9 +122,15 @@ def main():
             frames = [np.stack([((f*255).astype(np.uint8))]*3, axis=2) for f in history]
             # overlay text label onto each frame via PIL
             pil_frames = []
-            font = ImageFont.load_default()
+            # scale up frames for visibility
+            scale = args.scale
+            try:
+                font = ImageFont.truetype('DejaVuSans.ttf', scale)
+            except Exception:
+                font = ImageFont.load_default()
             for f_rgb in frames:
                 img = Image.fromarray(f_rgb)
+                img = img.resize((img.width*scale, img.height*scale), Image.NEAREST)
                 draw = ImageDraw.Draw(img)
                 # compute text width and height via textbbox
                 bbox = draw.textbbox((0, 0), label_str, font=font)
