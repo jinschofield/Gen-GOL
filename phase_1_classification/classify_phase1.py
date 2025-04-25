@@ -27,7 +27,8 @@ def main():
                         help='Path to finished_models.pt/model_final.pt')
     parser.add_argument('--num_samples', type=int, default=64)
     parser.add_argument('--grid_size', type=int, default=16)
-    parser.add_argument('--timesteps', type=int, default=300)
+    parser.add_argument('--timesteps', type=int, default=200,
+                        help='Number of GoL steps per sample')
     parser.add_argument('--schedule', type=str, default='linear', choices=['linear','cosine'])
     parser.add_argument('--sample_method', type=str, default='ancestral', choices=['ancestral','ddim'])
     parser.add_argument('--eta', type=float, default=0.0)
