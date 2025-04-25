@@ -65,6 +65,7 @@ def main():
     parser.add_argument('--anim_last', type=int, default=None, help='only animate the last N frames of history')
     parser.add_argument('--baseline_model', type=str, default=None,
                         help='path to untrained model checkpoint for baseline comparison')
+    parser.add_argument('--guidance_scale', type=float, default=1.0, help='classifier-free guidance scale at inference')
     args = parser.parse_args()
 
     threshold = args.threshold
@@ -79,8 +80,11 @@ def main():
     state = torch.load(args.checkpoint, map_location=args.device)
     model.load_state_dict(state)
     model.eval()
-    # diffusion with chosen noise schedule
-    diffusion = Diffusion(timesteps=args.timesteps, device=args.device, schedule=args.schedule)
+    # diffusion with chosen noise schedule and optional CFG
+    diffusion = Diffusion(timesteps=args.timesteps,
+                         device=args.device,
+                         schedule=args.schedule,
+                         guidance_scale=args.guidance_scale)
     # build condition tensor
     c = torch.full((args.num_samples,), args.class_label, device=args.device, dtype=torch.long)
     # sample

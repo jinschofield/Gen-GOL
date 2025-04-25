@@ -3,6 +3,7 @@ import subprocess
 import random
 import numpy as np
 import torch
+torch.autograd.set_detect_anomaly(True)
 from torch.utils.data import DataLoader, Subset
 from data.dataset import GolDataset
 from models.unet import UNet
@@ -43,6 +44,7 @@ def main():
                         help='number of random boards to use when --random_baseline')
     parser.add_argument('--grid_size', type=int, default=32,
                         help='grid size for random boards when using random baseline')
+    parser.add_argument('--guidance_scale', type=float, default=1.0, help='guidance scale for diffusion model')
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
@@ -94,10 +96,14 @@ def main():
     ema_model = copy.deepcopy(model)
     for p in ema_model.parameters():
         p.requires_grad_(False)
-    diffusion = Diffusion(timesteps=args.timesteps, device=args.device,
-                          live_weight=args.live_weight, schedule=args.schedule,
-                          ssim_weight=args.ssim_weight, bce_weight=args.bce_weight,
-                          mae_weight=args.mae_weight)
+    diffusion = Diffusion(timesteps=args.timesteps,
+                         device=args.device,
+                         schedule=args.schedule,
+                         guidance_scale=args.guidance_scale,
+                         live_weight=args.live_weight, 
+                         ssim_weight=args.ssim_weight, 
+                         bce_weight=args.bce_weight,
+                         mae_weight=args.mae_weight)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     ema_decay = args.ema_decay
 
@@ -148,6 +154,8 @@ def main():
                 real = x
                 fake = x0_pred.detach()
                 real_prob, real_feats = disc(real)
+                # detach real_feats so parameter updates don't corrupt the graph
+                real_feats = [f.detach() for f in real_feats]
                 fake_prob, fake_feats = disc(fake)
                 loss_d = - (torch.log(real_prob + 1e-8).mean() + torch.log(1 - fake_prob + 1e-8).mean())
                 disc_opt.zero_grad(); loss_d.backward(retain_graph=True); disc_opt.step()

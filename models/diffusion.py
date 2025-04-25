@@ -7,13 +7,15 @@ import warnings
 class Diffusion:
     def __init__(self, timesteps=300, beta_start=1e-4, beta_end=0.02,
                  device='cpu', live_weight=1.0, schedule: Optional[str]='linear',
-                 ssim_weight: float=0.0, bce_weight: float=0.0, mae_weight: float=0.0):
+                 ssim_weight: float=0.0, bce_weight: float=0.0, mae_weight: float=0.0,
+                 guidance_scale: float=1.0):
         """
         Args:
             live_weight: weight multiplier for loss on live cells (>1 to emphasize alive transitions)
             ssim_weight: weight multiplier for structural SSIM loss
             bce_weight: weight multiplier for binary cross-entropy loss on x0
             mae_weight: weight multiplier for L1 (MAE) loss on noise prediction
+            guidance_scale: guidance scale for classifier-free guidance at inference
         """
         self.timesteps = timesteps
         self.device = device
@@ -36,6 +38,8 @@ class Diffusion:
         self.bce_weight = bce_weight
         # weight for L1 (MAE) loss on noise prediction
         self.mae_weight = mae_weight
+        # guidance scale for classifier-free guidance at inference
+        self.guidance_scale = guidance_scale
         self.schedule = schedule
 
     @staticmethod
@@ -98,7 +102,13 @@ class Diffusion:
         betas_t = self.betas[t].view(-1,1,1,1)
         sqrt_one_minus_alphas_cumprod_t = self.sqrt_one_minus_alphas_cumprod[t].view(-1,1,1,1)
         sqrt_recip_alphas_t = torch.sqrt(1.0 / self.alphas[t]).view(-1,1,1,1)
-        eps = model(x, t, c)
+        # classifier-free guidance
+        if self.guidance_scale != 1.0 and c is not None:
+            eps_uncond = model(x, t, None)
+            eps_cond = model(x, t, c)
+            eps = eps_uncond + self.guidance_scale * (eps_cond - eps_uncond)
+        else:
+            eps = model(x, t, c)
         model_mean = sqrt_recip_alphas_t * (x - betas_t / sqrt_one_minus_alphas_cumprod_t * eps)
         if t[0] > 0:
             noise = torch.randn_like(x)
@@ -123,7 +133,13 @@ class Diffusion:
         for idx, i in enumerate(reversed(range(self.timesteps)), 1):
             print(f"[ddim sampling] step {idx}/{self.timesteps}", flush=True)
             t = torch.full((shape[0],), i, device=self.device, dtype=torch.long)
-            eps = model(x, t, c)
+            # classifier-free guidance
+            if self.guidance_scale != 1.0 and c is not None:
+                eps_uncond = model(x, t, None)
+                eps_cond = model(x, t, c)
+                eps = eps_uncond + self.guidance_scale * (eps_cond - eps_uncond)
+            else:
+                eps = model(x, t, c)
             alpha_t = self.alphas_cumprod[t].view(-1,1,1,1)
             alpha_prev = self.alphas_cumprod_prev[t].view(-1,1,1,1)
             sqrt_alpha_t = torch.sqrt(alpha_t)
