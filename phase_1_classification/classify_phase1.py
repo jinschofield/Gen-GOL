@@ -92,6 +92,11 @@ def main():
                     counts['still_life'] += 1
                 elif per and per > 1:
                     counts['oscillator'] += 1
+                    # track specific period counts
+                    period_key = f'oscillator_period_{per}'
+                    if period_key not in counts:
+                        counts[period_key] = 0
+                    counts[period_key] += 1
                 else:
                     counts['others'] += 1
             if detectors.detect_gliders(grid):
@@ -111,7 +116,7 @@ def main():
                 if per2 == 1:
                     label_str = 'still_life'
                 elif per2 and per2 > 1:
-                    label_str = 'oscillator'
+                    label_str = f'oscillator_period_{per2}'
                 else:
                     label_str = 'others'
             if detectors.detect_gliders(grid):
@@ -152,6 +157,10 @@ def main():
             w.writerow(['category', 'count'])
             for k, v in counts.items():
                 w.writerow([k, v])
+        # print counts to console including period-specific oscillators
+        print(f"\n{label} counts:")
+        for cat in sorted(counts.keys()):
+            print(f"{cat}: {counts[cat]}")
         # grid GIF
         num = len(clips)
         rows = int(math.sqrt(num)) or 1
