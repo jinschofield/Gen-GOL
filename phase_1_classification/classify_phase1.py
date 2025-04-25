@@ -90,7 +90,12 @@ def main():
             counts['spaceship'] += 1
         # save gif if alive
         if history[-1].sum() > 0:
-            frames = [(frame * 255).astype(np.uint8) for frame in history]
+            # convert history frames to RGB uint8 images for gif
+            frames = []
+            for frame in history:
+                gray = (frame * 255).astype(np.uint8)
+                rgb = np.stack([gray] * 3, axis=2)
+                frames.append(rgb)
             gif_path = os.path.join(gifs_dir, f'sample_{idx}.gif')
             clip = ImageSequenceClip(frames, fps=5)
             clip.write_gif(gif_path, program='imageio')
