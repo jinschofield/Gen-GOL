@@ -13,6 +13,7 @@ import argparse
 import copy
 from torch.nn.utils import clip_grad_norm_
 import torch.nn.functional as F
+import glob
 
 def main():
     parser = argparse.ArgumentParser()
@@ -59,11 +60,12 @@ def main():
             grid_size=args.grid_size
         )
     else:
-        # auto-generate dataset if missing
+        # auto-generate dataset if missing, skip if any saved .npy present
         survive_dir = os.path.join(args.data_dir, 'survive')
         die_dir = os.path.join(args.data_dir, 'die')
-        if not (os.path.isdir(survive_dir) and os.listdir(survive_dir)
-                and os.path.isdir(die_dir) and os.listdir(die_dir)):
+        patterns = glob.glob(os.path.join(args.data_dir, '**', '*.npy'), recursive=True)
+        if not (patterns or (os.path.isdir(survive_dir) and os.listdir(survive_dir)
+                              and os.path.isdir(die_dir) and os.listdir(die_dir))):
             print("Dataset missing; generating via generate_dataset.py...")
             subprocess.run(["python", "data/generate_dataset.py", "--data_dir", args.data_dir], check=True)
         # load full dataset
