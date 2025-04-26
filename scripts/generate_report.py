@@ -77,7 +77,7 @@ def evaluate(data_dir, ckpt, timesteps, num, output_prefix):
     d_cnt_t, d_pct_t = compute_dataset(data_dir,timesteps,types=True)
     print(f"[generate_report] {output_prefix}: loading model from {ckpt}...")
     # load model
-    model = UNet(dropout=0.0,num_classes=2).to(args.device)
+    model = UNet(dropout=0.0,num_classes=5).to(args.device)
     state = torch.load(ckpt,map_location=args.device)
     model.load_state_dict(state); model.eval()
     print(f"[generate_report] {output_prefix}: sampling uncond and types...")
