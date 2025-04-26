@@ -1,0 +1,4 @@
+scenario,died_out,still_life,oscillator_period_2,others
+uncond,58.4,26.900000000000002,13.100000000000001,1.6
+cond_live,0,0,0,0
+cond_dead,0,0,0,0

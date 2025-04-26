@@ -1,0 +1,3 @@
+scenario,live,dead,live_pct,dead_pct
+data,2271,1729,56.775,43.225
+gen_uncond,442,558,44.2,55.800000000000004
