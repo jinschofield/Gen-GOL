@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate a dataset of 32×32 GoL patterns by natural random sampling.
-Collect exactly N samples for each of: died_out, still_life, oscillator_period_2.
-Cells start alive with given threshold probability.
+Collect exactly N samples for each of: died_out, still_life, oscillator_period_2, others.
 """
 import os, sys, csv, argparse, random, time
 import numpy as np
@@ -35,7 +34,8 @@ def main():
     random.seed(args.seed)
     np.random.seed(args.seed)
 
-    cats = ['died_out', 'still_life', 'oscillator_period_2']
+    # include other life-forms beyond period-2 oscillators and still lifes
+    cats = ['died_out', 'still_life', 'oscillator_period_2', 'others']
     counts = {c: 0 for c in cats}
     saved = []
     os.makedirs(args.output_dir, exist_ok=True)
@@ -44,8 +44,10 @@ def main():
     while any(counts[c] < args.target_count for c in cats):
         # generate random initial grid
         arr = (np.random.rand(32,32) < args.threshold).astype(np.uint8)
-        cat = classify_grid(arr, timesteps=args.timesteps)
-        if cat in cats and counts[cat] < args.target_count:
+        raw_cat = classify_grid(arr, timesteps=args.timesteps)
+        # group non-targets into 'others'
+        cat = raw_cat if raw_cat in ['died_out', 'still_life', 'oscillator_period_2'] else 'others'
+        if counts[cat] < args.target_count:
             idx = counts[cat]
             fname = f"{cat}_{idx:04d}.npy"
             fpath = os.path.join(args.output_dir, fname)
