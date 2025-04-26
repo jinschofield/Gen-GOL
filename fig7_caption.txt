@@ -1,0 +1,30 @@
+Figure 7: t-SNE Scatterplots of FiLM-Layer Embeddings Pre- and Post-Conditioning
+
+This figure contains two side-by-side 2D t-SNE projections of internal feature vectors sampled at a fixed mid-diffusion timestep (e.g. t = 100):
+
+**(a) Pre-FiLM Embeddings** (Left Panel)
+- **X-axis (Dim 1)** and **Y-axis (Dim 2)**: the first two t-SNE dimensions, scaled arbitrarily to fill the plotting area.
+- **Points**: each dot represents one generated board’s feature embedding before FiLM conditioning.
+- **Color mapping**:
+  - **Blue**: boards whose final simulation outcome is ‘Live’ (≥1 survivor).
+  - **Red**: boards that died out (‘Dead’).
+- **Marker size**: small (e.g. s = 10) to avoid overplotting.
+- **Legend**: placed in upper right; maps colors to ‘Live’ and ‘Dead’.
+
+**(b) Post-FiLM Embeddings** (Right Panel)
+- Same axes (Dim 1, Dim 2) and scale as the left panel for direct comparison.
+- **Points**: embeddings after applying the class-conditional FiLM modulation.
+- **Color mapping**:
+  - **Green**: Still Life
+  - **Blue**: Oscillator (Period 2)
+  - **Orange**: Other Life
+  - **Purple**: All Living (aggregate)
+  - **Red**: Dead
+- **Legend**: shows five class colors; placed outside plot on the right.
+
+**Shared Plot Details**
+- **Figure size**: 8″ × 4″.
+- **No grid lines** to emphasize cluster structure.
+- **Point transparency** (alpha ≈ 0.7) to visualize dense regions.
+
+**File name**: `fig7.png`

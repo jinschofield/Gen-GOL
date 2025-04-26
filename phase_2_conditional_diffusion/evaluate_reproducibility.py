@@ -5,7 +5,10 @@ Evaluate reproducibility of each life-type under conditional diffusion (32×32 g
 Generates samples per category, classifies them using Phase 1 logic, and compares proportions vs. the dataset.
 Outputs a descriptive CSV and prints ranking by reproducibility.
 """
-import os, argparse, csv
+import os, sys, argparse, csv
+script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.abspath(os.path.join(script_dir, '..'))
+sys.path.insert(0, repo_root)
 import numpy as np
 import torch
 from models.unet import UNet

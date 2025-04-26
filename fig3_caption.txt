@@ -1,0 +1,26 @@
+Figure 3: Effect of Conditioning on Live/Dead Balance – Random Dataset
+
+This grouped bar chart compares the proportions of “Live” vs. “Dead” final boards under three sampling modes:
+- Unconditioned (gray): N = 1 000 boards sampled with no class label.
+- Conditioned → Live (green): N = 1 000 boards sampled with a “live” condition (c = 1).
+- Conditioned → Dead (red): N = 1 000 boards sampled with a “dead” condition (c = 0).
+
+Axes:
+- X-axis: two categories, “Live” (x = 0) and “Dead” (x = 1).
+- Y-axis: Percentage of boards (%) from 0 % to 100 % (ticks at 0, 20, 40, 60, 80, 100).
+
+Bars:
+- For each category:
+  • Gray bar at x – 0.3 (Unconditioned)
+  • Green bar at x       (Conditioned Live)
+  • Red bar at x + 0.3   (Conditioned Dead)
+- Bar width = 0.25.
+- Each bar is annotated with absolute count (e.g., “820/1000”) and percentage (e.g., “82.0 %”).
+- Δ% labels above each conditioned bar indicate relative change vs. Unconditioned: (cond% – uncond%) / uncond% × 100.
+
+Legend:
+- Gray = Unconditioned
+- Green = Conditioned Live
+- Red = Conditioned Dead
+
+File name: `random_fig3.png`

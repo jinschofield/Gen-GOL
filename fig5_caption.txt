@@ -1,0 +1,34 @@
+Figure 5: Conditioning Effects on Quota-Trained Model – Output Distribution by Class
+
+This grouped bar chart shows the percentage of boards assigned to each outcome class under two sampling modes:
+- **Unconditioned** (gray bars): N = 1 000 boards sampled with no conditioning.
+- **Conditioned on class** (colored bars): N = 1 000 boards sampled with the specified target label.
+
+Categories (X-axis at positions 0–4):
+1. All Living
+2. Still Life
+3. Oscillator (Period 2)
+4. Other Life
+5. Dead
+
+Axes:
+- **X-axis**: Five discrete ticks labeled as above; tick labels rotated 45° if needed.
+- **Y-axis**: “Percentage of Boards” from 0 % to 100 % (major ticks every 20 %).
+
+Bars:
+- **Gray** bar at each category = unconditioned sample proportion.
+- **Colored** bar at same category = conditioned sample proportion. Colors: 
+  - All Living = green
+  - Still Life = teal
+  - Oscillator P2 = orange
+  - Other Life = purple
+  - Dead = red
+- Bar width = 0.35.
+- Percentage value (e.g. “80.0 % (800/1000)”) printed atop each bar.
+- **Δ%** annotation above each colored bar: (cond% − uncond%) / uncond% × 100, formatted “+10.0 %”.
+
+Legend:
+- Gray = Unconditioned
+- Colored = Conditioned on Class
+
+File name: `quota_fig5.png`

@@ -5,7 +5,7 @@ Usage:
   python balance_dataset.py \
     --label_csv phase2_training_labels_32x32.csv \
     --output_csv phase2_training_labels_balanced_32x32.csv \
-    [--mode downsample|oversample] [--seed 42]
+    [--mode downsample|oversample] [--seed 42] [--target_count 1000]
 """
 import os, csv, argparse, random
 from collections import defaultdict
@@ -16,38 +16,38 @@ def main():
     parser.add_argument('--output_csv', default='phase2_training_labels_balanced_32x32.csv',
                         help='Output balanced CSV')
     parser.add_argument('--mode', choices=['downsample', 'oversample'], default='downsample',
-                        help='Downsample larger groups or oversample smaller groups')
+                        help='(deprecated) unused; use --target_count for exact per-category count')
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--target_count', type=int, default=1000,
+                        help='Desired number of samples per category')
     args = parser.parse_args()
 
     random.seed(args.seed)
-    # load labels
+    # define desired categories
+    target_cats = ['died_out','still_life','oscillator_period_2','glider','others']
+    # load and remap labels
     samples = []
     with open(args.label_csv) as f:
         reader = csv.reader(f)
         next(reader)
         for path, cat in reader:
-            samples.append((path, cat))
-    # group by category
-    groups = defaultdict(list)
+            key = cat if cat in target_cats else 'others'
+            samples.append((path, key))
+    # initialize groups
+    groups = {c: [] for c in target_cats}
     for path, cat in samples:
         groups[cat].append(path)
-    cats = sorted(groups.keys())
-    counts = {c: len(groups[c]) for c in cats}
-    # determine target count
-    min_n = min(counts.values())
-    max_n = max(counts.values())
-    target = min_n if args.mode == 'downsample' else max_n
-    # build balanced list
+    # build balanced list: exact target_count per category
     balanced = []
-    for cat in cats:
+    for cat in target_cats:
         paths = groups[cat]
-        if args.mode == 'downsample':
-            chosen = random.sample(paths, target)
+        if not paths:
+            raise RuntimeError(f'No samples found for category {cat}')
+        if len(paths) >= args.target_count:
+            chosen = random.sample(paths, args.target_count)
         else:
-            chosen = [random.choice(paths) for _ in range(target)]
-        for p in chosen:
-            balanced.append((p, cat))
+            chosen = random.choices(paths, k=args.target_count)
+        balanced.extend((p, cat) for p in chosen)
     random.shuffle(balanced)
     # write CSV
     os.makedirs(os.path.dirname(args.output_csv) or '.', exist_ok=True)
@@ -59,9 +59,9 @@ def main():
     # summary
     print(f"Balanced CSV saved to {args.output_csv}")
     # counts per category
-    new_counts = {c: sum(1 for _,cat in balanced if cat == c) for c in cats}
+    new_counts = {c: sum(1 for _,cat in balanced if cat == c) for c in target_cats}
     print("Counts per category:")
-    for c in cats:
+    for c in target_cats:
         print(f"  {c}: {new_counts[c]}")
     # aggregated
     total = len(balanced)

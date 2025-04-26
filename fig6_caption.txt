@@ -1,0 +1,18 @@
+Figure 6: Local Motif Analysis via Sliding Windows (Quota Dataset)
+
+A 4×4 panel grid showing the most frequent local binary motifs at window sizes 3×3, 5×5, 7×7, and 9×9 across four sampling modes:
+- **Columns (left to right)**: Quota training data, Unconditioned generation, Conditioned→Live, Conditioned→Specific (per class).
+- **Rows (top to bottom)**: Window size 3×3, 5×5, 7×7, 9×9.
+
+Per subplot:
+- **Mini-grids**: top three unique binary patterns sorted by frequency (displayed as black/white cells).
+- **Annotations below each mini-grid**:
+  - Absolute count of occurrences (e.g. “2 350”).
+  - % of total live cells captured (e.g. “12.5 %”).
+  - Δ% relative to training data (e.g. “+1.8 %”).
+- **Stride**: 1 (overlapping windows extracted from 1 000 boards).
+- **No axes** (patterns are spatial thumbnails), but each row/column has a label:
+  - Row labels at left: “3×3”, “5×5”, “7×7”, “9×9”.
+  - Column titles above: “Data”, “Uncond”, “Cond-Live”, “Cond-Specific”.
+
+Figure size ~12″×12″, each thumbnail rendered at 32 dpi. File name: `quota_fig6.png`

@@ -8,6 +8,12 @@ import os
 import glob
 import csv
 import numpy as np
+import sys
+# ensure repo root & utils on module path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.abspath(os.path.join(script_dir, '..'))
+sys.path.insert(0, repo_root)
+sys.path.insert(0, os.path.join(repo_root, 'utils'))  # for gol_simulator
 from utils.gol_simulator import simulate
 from phase_1_classification.utils.detectors import detect_gliders, detect_spaceships
 
@@ -30,11 +36,11 @@ def classify_grid(arr, timesteps=200):
         cat = f'oscillator_period_{per}'
     else:
         cat = 'others'
-    # override if glider or spaceship detected in initial frame
-    first = history[0]
-    if detect_gliders(first):
+    # override if glider or spaceship detected in final frame
+    last_frame = history[-1]
+    if detect_gliders(last_frame):
         cat = 'glider'
-    elif detect_spaceships(first):
+    elif detect_spaceships(last_frame):
         cat = 'spaceship'
     return cat
 

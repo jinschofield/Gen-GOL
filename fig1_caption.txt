@@ -1,0 +1,17 @@
+Figure 1: Living vs Dead Proportions – Training Data vs Unconditioned Generation (Random Dataset)
+
+This bar chart compares the percentage of ‘Live’ and ‘Dead’ final boards between:
+- **Training data** (N = 4 000 boards at threshold 0.05)
+- **Unconditioned samples** (N = 1 000 generated boards with no class input)
+
+Axes:
+- **X-axis**: two categories, labeled “Live” (boards with ≥1 surviving cell) and “Dead” (boards that died out). Tick positions at x=0 (Live) and x=1 (Dead).
+- **Y-axis**: “Percentage of Boards” ranging from 0 % to 100 % (major ticks at 0, 25, 50, 75, 100).
+
+Elements:
+- **Gray bars** at x=0 and x=1 show training data percentages; **Blue bars** at x=0.4 and x=1.4 show model output.
+- Bar width = 0.4 for both series.
+- Exact percentages printed above each bar (e.g. “17.00 % (680/4000)”).
+- Δ% annotation between each pair: (model% – data%)/data% × 100 labeled in smaller font above.
+
+File name: `random_fig1.png`
