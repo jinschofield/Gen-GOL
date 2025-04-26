@@ -69,20 +69,28 @@ def sample_model(model, diff, device, num, timesteps, condition, types=False):
 
 # orchestrate one scenario
 def evaluate(data_dir, ckpt, timesteps, num, output_prefix):
+    print(f"[generate_report] Starting evaluation for '{output_prefix}'")
     # dataset
+    print(f"[generate_report] {output_prefix}: computing living/dead stats...")
     d_cnt, d_pct = compute_dataset(data_dir,timesteps,types=False)
+    print(f"[generate_report] {output_prefix}: computing type stats...")
     d_cnt_t, d_pct_t = compute_dataset(data_dir,timesteps,types=True)
+    print(f"[generate_report] {output_prefix}: loading model from {ckpt}...")
     # load model
     model = UNet(dropout=0.0,num_classes=2).to(args.device)
     state = torch.load(ckpt,map_location=args.device)
     model.load_state_dict(state); model.eval()
+    print(f"[generate_report] {output_prefix}: sampling uncond and types...")
     diff = Diffusion(timesteps=timesteps,device=args.device,
                      schedule=args.schedule,guidance_scale=args.guidance_scale)
     # samples
     uc_cnt, uc_pct = sample_model(model,diff,args.device,num,timesteps,None,types=False)
     uc_cnt_t, uc_pct_t = sample_model(model,diff,args.device,num,timesteps,None,types=True)
+    print(f"[generate_report] {output_prefix}: sampling cond live...")
     cl_cnt, cl_pct = sample_model(model,diff,args.device,num,timesteps,1,types=False)
+    print(f"[generate_report] {output_prefix}: sampling cond dead...")
     cd_cnt, cd_pct = sample_model(model,diff,args.device,num,timesteps,0,types=False)
+    print(f"[generate_report] {output_prefix}: writing CSVs and plotting figures...")
     # CSVs
     # 1. living/dead data vs generated (uncond)
     fn1 = f"{output_prefix}_ld_data_vs_gen.csv"
@@ -135,11 +143,12 @@ def evaluate(data_dir, ckpt, timesteps, num, output_prefix):
                 'cond_dead':{c:cd_pct['live'] if c!='died_out' else cd_pct['dead'] for c in cats_types}}[sc]
         ax.bar(x+i*wdt, [vals[c] for c in cats_types],wdt,label=sc)
     ax.set_xticks(x+wdt); ax.set_xticklabels(cats_types,rotation=45); ax.legend(); fig.tight_layout(); fig.savefig(f"{output_prefix}_fig4.png"); plt.close(fig)
+    print(f"[generate_report] Completed evaluation for '{output_prefix}'")
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
-    parser.add_argument('--random_model',required=True)
-    parser.add_argument('--quota_model',required=True)
+    parser.add_argument('--random_model',default='finished_models/model_final_random.pt')
+    parser.add_argument('--quota_model',default='finished_models/model_final_quota.pt')
     parser.add_argument('--random_data',default='phase_2_conditional_diffusion/random_data_32x32')
     parser.add_argument('--quota_data',default='phase_2_conditional_diffusion/natural_data_32x32')
     parser.add_argument('--num_samples',type=int,default=1000)
