@@ -41,8 +41,18 @@ def main():
     all_embeds = []
     prepost = []
     conds = []
-
+    # Map numeric/None condition labels to descriptive names
+    cond_name_map = {
+        None: 'unconditional',
+        0: 'death',
+        1: 'alive',
+        2: 'still-life',
+        3: 'oscillator_p2',
+        4: 'other_life'
+    }
     for cl in args.condition_labels:
+        # Descriptive condition name
+        cl_name = cond_name_map.get(cl, f'cond_{cl}')
         # sample random timesteps
         t = torch.randint(0, args.timesteps, (args.num_samples,), device=device)
         # pre-conditioning time embedding
@@ -59,10 +69,10 @@ def main():
         # collect
         all_embeds.append(emb_pre.cpu().numpy())
         prepost += ['pre'] * args.num_samples
-        conds += [f"cond_{cl}"] * args.num_samples
+        conds += [cl_name] * args.num_samples
         all_embeds.append(emb_post.cpu().numpy())
         prepost += ['post'] * args.num_samples
-        conds += [f"cond_{cl}"] * args.num_samples
+        conds += [cl_name] * args.num_samples
 
     X = np.vstack(all_embeds)
     print("Embedding matrix shape:", X.shape)
@@ -70,37 +80,39 @@ def main():
     print("Computed t-SNE on FiLM embeddings.")
 
     # BASIC grouping: death vs alive
-    basic = ['death' if c=='cond_0' else 'alive' for c in conds]
+    basic = ['death' if c=='death' else 'alive' for c in conds]
     plt.figure(figsize=(8,8))
-    markers = {'pre':'o','post':'x'}
+    markers = {'pre': 'o', 'post': 'x'}
+    # Human-readable marker names
+    marker_names = {'pre': 'time_emb', 'post': 'time_emb + class_emb'}
     for lbl in ['death','alive']:
         for pp in ['pre','post']:
-            idx = [(pp_, b)==(pp, lbl) for pp_, b in zip(prepost, basic)]
+            idx = [(pp_, b) == (pp, lbl) for pp_, b in zip(prepost, basic)]
             plt.scatter(
                 X_tsne[idx,0], X_tsne[idx,1],
-                label=f"{lbl}_{pp}", marker=markers[pp], alpha=0.6, s=5
+                label=f"{lbl} ({marker_names[pp]})", marker=markers[pp], alpha=0.6, s=5
             )
     plt.legend(bbox_to_anchor=(1,1))
     plt.title("t-SNE: basic grouping (death vs alive)")
     plt.tight_layout()
-    out_basic = os.path.join(args.out_dir, 'tsne_film_basic.png')
+    out_basic = os.path.join(args.out_dir, 'tsne_film_basic_labeled.png')
     plt.savefig(out_basic)
     print(f"Saved basic t-SNE to {out_basic}")
 
     # DETAILED grouping: pre/post clusters per condition
     plt.figure(figsize=(8,8))
-    markers = {'pre':'o','post':'x'}
+    markers = {'pre': 'o', 'post': 'x'}
     for cond in sorted(set(conds)):
         for pp in ['pre','post']:
-            idx = [(pp_, c_)==(pp,cond) for pp_,c_ in zip(prepost,conds)]
+            idx = [(pp_, c_) == (pp, cond) for pp_, c_ in zip(prepost, conds)]
             plt.scatter(
                 X_tsne[idx,0], X_tsne[idx,1],
-                label=f"{cond}_{pp}", marker=markers[pp], alpha=0.6, s=5
+                label=f"{cond} ({marker_names[pp]})", marker=markers[pp], alpha=0.6, s=5
             )
     plt.legend(bbox_to_anchor=(1,1))
     plt.title('t-SNE: UNet FiLM embeddings pre/post conditioning')
     plt.tight_layout()
-    out_file = os.path.join(args.out_dir, 'tsne_film_prepost.png')
+    out_file = os.path.join(args.out_dir, 'tsne_film_prepost_labeled.png')
     plt.savefig(out_file)
     print(f"Saved FiLM embeddings t-SNE to {out_file}")
 
