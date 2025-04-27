@@ -79,42 +79,42 @@ def main():
         max_steps=args.timesteps, threshold=args.threshold
     )
 
-    # define categories
-    dead = 'died_out'
-    types = ['still_life', 'oscillator_p2', 'survived_unknown']
-    # helper: percentage per category
-    def pct(res, key): return res.get(key,0)/res['total']*100.0
-    # compute pct for types and dead
-    train_pct = {key: pct(train_results, key) for key in types + [dead]}
-    gen_pct   = {key: pct(gen_results,   key) for key in types + [dead]}
-    # compute alive grouping (sum of types)
-    train_pct['alive'] = sum(train_pct[k] for k in types)
-    gen_pct['alive']   = sum(gen_pct[k]   for k in types)
-    # define plot order
-    plot_keys = ['alive'] + types
+    # compute absolute counts for five key categories
+    total_train = train_results['total']
+    train_dead = train_results.get('died_out', 0)
+    train_alive = total_train - train_dead
+    train_sl = train_results.get('still_life', 0)
+    train_osc2 = train_results.get('oscillator_p2', 0)
+    train_other = train_alive - train_sl - train_osc2
 
-    # compute absolute counts for five categories
-    counts_keys = ['alive'] + types + [dead]
-    train_counts = {k: train_results.get(k, 0) for k in counts_keys}
-    gen_counts   = {k: gen_results.get(k,   0) for k in counts_keys}
-    deltas       = {k: gen_counts[k] - train_counts[k] for k in counts_keys}
+    total_gen = gen_results['total']
+    gen_dead = gen_results.get('died_out', 0)
+    gen_alive = total_gen - gen_dead
+    gen_sl = gen_results.get('still_life', 0)
+    gen_osc2 = gen_results.get('oscillator_p2', 0)
+    gen_other = gen_alive - gen_sl - gen_osc2
+
+    # prepare labels and ordered counts
+    categories = ['Alive', 'Still Life', 'Oscillator P2', 'Other', 'Dead']
+    train_counts = [train_alive, train_sl, train_osc2, train_other, train_dead]
+    gen_counts   = [gen_alive,   gen_sl,   gen_osc2,   gen_other,   gen_dead]
+    deltas       = [g - t for t, g in zip(train_counts, gen_counts)]
 
     # plot absolute counts
     print("Plotting absolute counts...")
     fig, ax = plt.subplots(figsize=(12, 6))
-    x = np.arange(len(counts_keys))
+    x = np.arange(len(categories))
     w = 0.35
-    ax.bar(x - w/2, [train_counts[k] for k in counts_keys], w, label='Train', color='skyblue')
-    ax.bar(x + w/2, [gen_counts[k]   for k in counts_keys], w, label='Gen',   color='salmon')
-    labels = ['Alive', 'Still Life', 'Oscillator P2', 'Other', 'Dead']
+    ax.bar(x - w/2, train_counts, w, label='Train', color='skyblue')
+    ax.bar(x + w/2, gen_counts,   w, label='Gen',   color='salmon')
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=45, ha='right')
+    ax.set_xticklabels(categories, rotation=45, ha='right')
     ax.set_ylabel('Count')
     # annotate counts and deltas
-    for i, k in enumerate(counts_keys):
-        ax.text(i - w/2, train_counts[k], str(train_counts[k]), ha='center', va='bottom')
-        ax.text(i + w/2, gen_counts[k],   str(gen_counts[k]),   ha='center', va='bottom')
-        ax.text(i + w/2, gen_counts[k], f'Δ {deltas[k]}', ha='center', va='top', color='black')
+    for i, (t, g, d) in enumerate(zip(train_counts, gen_counts, deltas)):
+        ax.text(i - w/2, t, str(t), ha='center', va='bottom')
+        ax.text(i + w/2, g, str(g), ha='center', va='bottom')
+        ax.text(i + w/2, g, f'Δ {d}', ha='center', va='top', color='black')
     ax.legend()
     plt.tight_layout()
     fig_path = os.path.join(args.out_dir, 'figure2_absolute.png')
@@ -128,8 +128,8 @@ def main():
     with open(out_csv, 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['category', 'train_count', 'gen_count', 'delta_count'])
-        for k in counts_keys:
-            writer.writerow([k, train_counts[k], gen_counts[k], deltas[k]])
+        for name, t, g, d in zip(categories, train_counts, gen_counts, deltas):
+            writer.writerow([name, t, g, d])
     print(f"Saved metrics CSV: {out_csv}")
 
 
