@@ -23,7 +23,7 @@ def main():
                         help='CSV of [filepath, category] labels')
     parser.add_argument('--resume', type=str, default=None,
                         help='Checkpoint to resume from')
-    parser.add_argument('--cf_prob', type=float, default=0.1)
+    parser.add_argument('--cf_prob', type=float, default=0.1, help='probability to drop conditioning (classifier-free)')
     parser.add_argument('--weight_decay', type=float, default=1e-4)
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--guidance_scale', type=float, default=1.0)
@@ -87,9 +87,14 @@ def main():
         for x, c in loader:
             x = x.to(args.device)
             c = c.to(args.device)
+            # classifier-free guidance dropout
+            if random.random() < args.cf_prob:
+                c_input = None
+            else:
+                c_input = c
             t = torch.randint(0, diffusion.timesteps, (x.size(0),),
                               device=args.device)
-            loss = diffusion.p_losses(model, x, t, c)
+            loss = diffusion.p_losses(model, x, t, c_input)
             optimizer.zero_grad()
             loss.backward()
             if args.grad_clip > 0:

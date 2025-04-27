@@ -210,12 +210,19 @@ def main():
             print(f"Epoch {epoch+1}/{args.epochs} Validation Loss: {avg_val:.4f}")
             model.train()
 
-    # save final model
-    final_ckpt = os.path.join(args.save_dir, "model_final.pt")
+    # final save into finished_model directory with dataset-specific names
+    output_dir = "finished_model"
+    os.makedirs(output_dir, exist_ok=True)
+    if args.random_baseline:
+        final_name = "model_final_random.pt"
+        ema_name = "model_final_random_ema.pt"
+    else:
+        final_name = "model_final_quota.pt"
+        ema_name = "model_final_quota_ema.pt"
+    final_ckpt = os.path.join(output_dir, final_name)
     torch.save(model.state_dict(), final_ckpt)
     print(f"Training complete. Model saved to {final_ckpt}")
-    # save EMA model
-    ema_ckpt = os.path.join(args.save_dir, "model_final_ema.pt")
+    ema_ckpt = os.path.join(output_dir, ema_name)
     torch.save(ema_model.state_dict(), ema_ckpt)
     print(f"EMA model saved to {ema_ckpt}")
 

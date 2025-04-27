@@ -78,6 +78,27 @@ def main():
         gen, train_patterns,
         max_steps=args.timesteps, threshold=args.threshold
     )
+    # novelty rate for generated patterns (rot/flip)
+    novel_gen = gen_results.get('novel_frac', 0.0)
+    print(f"Novelty fraction (rot/flip) for generated: {novel_gen:.3f}")
+    # save novelty metrics CSV
+    import csv
+    out_csv_novel = os.path.join(args.out_dir, 'figure2_metrics_novelty.csv')
+    with open(out_csv_novel, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['novel_frac'])
+        writer.writerow([f"{novel_gen:.3f}"])
+    print(f"Saved novelty metrics CSV: {out_csv_novel}")
+    # plot novelty rate bar chart
+    fig, ax = plt.subplots(figsize=(4,4))
+    ax.bar(['Generated'], [novel_gen * 100], color='salmon')
+    ax.set_ylabel('Novelty (%)')
+    ax.set_title('Novelty Rate (rot/flip)')
+    ax.text(0, novel_gen * 100, f"{novel_gen * 100:.1f}%", ha='center', va='bottom')
+    plt.tight_layout()
+    out_fig_novel = os.path.join(args.out_dir, 'figure2_novelty.png')
+    fig.savefig(out_fig_novel)
+    print(f"Saved novelty figure: {out_fig_novel}")
 
     # compute absolute counts for five key categories
     total_train = train_results['total']
