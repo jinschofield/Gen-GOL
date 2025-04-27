@@ -69,12 +69,34 @@ def main():
     X_tsne = TSNE(n_components=2).fit_transform(X)
     print("Computed t-SNE on FiLM embeddings.")
 
+    # BASIC grouping: death vs alive
+    basic = ['death' if c=='cond_0' else 'alive' for c in conds]
+    plt.figure(figsize=(8,8))
+    markers = {'pre':'o','post':'x'}
+    for lbl in ['death','alive']:
+        for pp in ['pre','post']:
+            idx = [(pp_, b)==(pp, lbl) for pp_, b in zip(prepost, basic)]
+            plt.scatter(
+                X_tsne[idx,0], X_tsne[idx,1],
+                label=f"{lbl}_{pp}", marker=markers[pp], alpha=0.6, s=5
+            )
+    plt.legend(bbox_to_anchor=(1,1))
+    plt.title("t-SNE: basic grouping (death vs alive)")
+    plt.tight_layout()
+    out_basic = os.path.join(args.out_dir, 'tsne_film_basic.png')
+    plt.savefig(out_basic)
+    print(f"Saved basic t-SNE to {out_basic}")
+
+    # DETAILED grouping: pre/post clusters per condition
     plt.figure(figsize=(8,8))
     markers = {'pre':'o','post':'x'}
     for cond in sorted(set(conds)):
         for pp in ['pre','post']:
             idx = [(pp_, c_)==(pp,cond) for pp_,c_ in zip(prepost,conds)]
-            plt.scatter(X_tsne[idx,0], X_tsne[idx,1], label=f"{cond}_{pp}", marker=markers[pp], alpha=0.6, s=5)
+            plt.scatter(
+                X_tsne[idx,0], X_tsne[idx,1],
+                label=f"{cond}_{pp}", marker=markers[pp], alpha=0.6, s=5
+            )
     plt.legend(bbox_to_anchor=(1,1))
     plt.title('t-SNE: UNet FiLM embeddings pre/post conditioning')
     plt.tight_layout()
