@@ -78,12 +78,32 @@ def main():
     # binarize
     grids = (samples.squeeze(1).cpu().numpy() > args.threshold).astype(np.uint8)
 
-    # filter by simulation period
+    # filter by simulation period and validate Game of Life rules
     filtered = []
     for g in grids:
         hist = simulate(g, steps=args.timesteps)
         per = detect_period(hist)
         if per == args.period and hist[-1].sum() > 0:
+            final = hist[-1]
+            if args.period == 1:
+                # still-life neighbor rule: alive cells have 2 or 3 neighbors; dead cells not exactly 3
+                padded = np.pad(final, 1, mode='constant', constant_values=0)
+                ncount = (
+                    padded[:-2,:-2] + padded[:-2,1:-1] + padded[:-2,2:] +
+                    padded[1:-1,:-2] + padded[1:-1,2:] +
+                    padded[2:  ,:-2] + padded[2:,1:-1] + padded[2:,2:]
+                )
+                alive = final.astype(bool)
+                if not ((ncount[alive] >= 2) & (ncount[alive] <= 3)).all():
+                    continue
+                if (ncount[~alive] == 3).any():
+                    continue
+            elif args.period == 2:
+                # verify true period-2 toggle
+                next_frame = simulate(final, steps=1)[-1]
+                prev = hist[-2] if len(hist) > 1 else None
+                if prev is None or not np.array_equal(next_frame, prev):
+                    continue
             filtered.append(g)
     print(f"Filtered {len(filtered)} period-{args.period} samples out of {len(grids)}")
     if not filtered:

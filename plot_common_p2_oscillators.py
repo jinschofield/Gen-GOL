@@ -87,6 +87,24 @@ def main():
         hist = simulate(g, steps=args.timesteps)
         per = detect_period(hist)
         if per == args.period and hist[-1].sum() > 0:
+            final = hist[-1]
+            # neighbor rule: alive cells have 2-3 neighbors; dead cells not exactly 3
+            padded = np.pad(final, 1, mode='constant', constant_values=0)
+            ncount = (
+                padded[:-2,:-2] + padded[:-2,1:-1] + padded[:-2,2:] +
+                padded[1:-1,:-2] + padded[1:-1,2:] +
+                padded[2:  ,:-2] + padded[2:,1:-1] + padded[2:,2:]
+            )
+            alive = final.astype(bool)
+            if not ((ncount[alive] >= 2) & (ncount[alive] <= 3)).all():
+                continue
+            if (ncount[~alive] == 3).any():
+                continue
+            # verify true period-2 toggle
+            next_frame = simulate(final, steps=1)[-1]
+            prev = hist[-2] if len(hist) > 1 else None
+            if prev is None or not np.array_equal(next_frame, prev):
+                continue
             filtered.append(g)
     print(f"Filtered {len(filtered)} period-{args.period} patterns out of {len(grids)}")
     if not filtered:
