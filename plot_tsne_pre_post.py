@@ -73,7 +73,7 @@ def main():
     for cl in args.condition_labels:
         with torch.no_grad():
             x = torch.randn(shape, device=device)
-            t = torch.full((args.num_samples,), args.timesteps, device=device, dtype=torch.long)
+            t = torch.full((args.num_samples,), args.timesteps - 1, device=device, dtype=torch.long)
             x_pre = x
             x_post = diffusion.p_sample(model, x, t, c=None if cl is None else torch.full((args.num_samples,), cl, device=device, dtype=torch.long))
         # flatten arrays
