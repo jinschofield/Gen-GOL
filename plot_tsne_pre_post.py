@@ -72,28 +72,33 @@ def main():
 
     shape = (args.num_samples, 1, args.grid_size, args.grid_size)
     for cl in args.condition_labels:
+        # classify on final full samples for labeling
+        with torch.no_grad():
+            x_final = diffusion.sample(model, shape, c=None if cl is None else torch.full((args.num_samples,), cl, device=device, dtype=torch.long))
+        bin_final = (x_final.squeeze(1).cpu().numpy() > args.threshold).astype(np.uint8)
+        types_final = [classify_pattern(g) for g in bin_final]
+        basic_final = ['death' if t=='death' else 'life' for t in types_final]
+
+        # sample one-step pre/post features
         with torch.no_grad():
             x = torch.randn(shape, device=device)
-            t = torch.full((args.num_samples,), args.timesteps - 1, device=device, dtype=torch.long)
+            t_step = torch.full((args.num_samples,), args.timesteps - 1, device=device, dtype=torch.long)
             x_pre = x
-            x_post = diffusion.p_sample(model, x, t, c=None if cl is None else torch.full((args.num_samples,), cl, device=device, dtype=torch.long))
+            x_post = diffusion.p_sample(model, x, t_step,
+                                       c=None if cl is None else torch.full((args.num_samples,), cl, device=device, dtype=torch.long))
         # flatten arrays
         pre = x_pre.squeeze(1).cpu().numpy().reshape(args.num_samples, -1)
         post = x_post.squeeze(1).cpu().numpy().reshape(args.num_samples, -1)
-        # classify on post (threshold)
-        bin_post = (x_post.squeeze(1).cpu().numpy() > args.threshold).astype(np.uint8)
-        types = [classify_pattern(g) for g in bin_post]
-        basic = ['death' if t=='death' else 'life' for t in types]
-        # accumulate
+        # accumulate features and labels
         all_feat.append(pre)
-        labels_basic += basic
-        labels_type += types
-        prepost += ['pre']*args.num_samples
+        labels_basic += basic_final
+        labels_type += types_final
+        prepost += ['pre'] * args.num_samples
         conds += [f"cond_{cl}" for _ in range(args.num_samples)]
         all_feat.append(post)
-        labels_basic += basic
-        labels_type += types
-        prepost += ['post']*args.num_samples
+        labels_basic += basic_final
+        labels_type += types_final
+        prepost += ['post'] * args.num_samples
         conds += [f"cond_{cl}" for _ in range(args.num_samples)]
 
     X = np.vstack(all_feat)
