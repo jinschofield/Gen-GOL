@@ -37,9 +37,12 @@ def main():
     model.load_state_dict(state)
     model.eval()
 
-    # diffusion
+    # ensure diffusion on same device as model
     diffusion = Diffusion(
-        timesteps=args.timesteps, schedule=args.schedule, guidance_scale=args.guidance_scale
+        timesteps=args.timesteps,
+        device=args.device,
+        schedule=args.schedule,
+        guidance_scale=args.guidance_scale
     )
 
     # sampling

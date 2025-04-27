@@ -10,7 +10,8 @@ class SinusoidalPosEmb(nn.Module):
     def forward(self, x):
         device = x.device
         half = self.dim // 2
-        emb = torch.log(torch.tensor(10000.0)) / (half - 1)
+        # ensure constant on same device as input
+        emb = torch.log(torch.tensor(10000.0, device=device)) / (half - 1)
         emb = torch.exp(torch.arange(half, device=device) * -emb)
         emb = x[:, None] * emb[None, :]
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
