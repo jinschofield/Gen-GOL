@@ -9,12 +9,13 @@ from .gol_simulator import simulate
 
 def detect_period(history):
     """Given a history list of grids, return period (1 for still life, >1 if oscillator), or None if no repeat."""
+    # detect period relative to final state
     if len(history) <= 1:
         return None
-    first = history[0]
-    for i in range(1, len(history)):
-        if np.array_equal(history[i], first):
-            return i
+    last = history[-1]
+    for p in range(1, len(history)):
+        if np.array_equal(history[-1-p], last):
+            return p
     return None
 
 
