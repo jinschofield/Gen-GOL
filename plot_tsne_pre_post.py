@@ -9,6 +9,7 @@ import os, sys, argparse
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from collections import Counter
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from utils.metrics import detect_period
@@ -96,6 +97,8 @@ def main():
         conds += [f"cond_{cl}" for _ in range(args.num_samples)]
 
     X = np.vstack(all_feat)
+    print("Label distribution (basic):", Counter(labels_basic))
+    print("Label distribution (types):", Counter(labels_type))
     # reduce dims before TSNE
     X_pca = PCA(n_components=50).fit_transform(X)
     X_tsne = TSNE(n_components=2).fit_transform(X_pca)
