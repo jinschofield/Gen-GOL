@@ -79,8 +79,10 @@ def main():
     else:
         names = [os.path.splitext(os.path.basename(c))[0] for c in args.checkpoints]
 
-    categories = ['Alive', 'Still Life', 'Oscillator P2', 'Other', 'Dead']
-    count_keys = ['alive', 'still_life', 'oscillator_p2', 'other', 'dead']
+    # dynamic categories and result keys aligned with cond_labels
+    # map label index to result key and human-readable name
+    key_label_map = {0: 'dead', 1: 'alive', 2: 'still_life', 3: 'oscillator_p2', 4: 'other'}
+    name_label_map = {0: 'Dead', 1: 'Alive', 2: 'Still Life', 3: 'Oscillator P2', 4: 'Other'}
 
     for ckpt, name in zip(args.checkpoints, names):
         out_model = os.path.join(args.out_dir, name)
@@ -101,8 +103,9 @@ def main():
                 cond_labels = list(range(model.class_emb.num_embeddings))
             except AttributeError:
                 raise RuntimeError("Model has no class_emb, cannot condition")
-        assert len(cond_labels) == len(categories), \
-            "Number of cond_labels must equal number of categories"
+
+        categories = [name_label_map.get(cl, str(cl)) for cl in cond_labels]
+        count_keys = [key_label_map.get(cl, str(cl)) for cl in cond_labels]
 
         # diffusion
         diff = Diffusion(timesteps=args.timesteps, device=device,
@@ -149,6 +152,34 @@ def main():
             perc_cond_diag.append(val)
 
         plot_same_category(categories, perc_unc, perc_cond_diag, name, out_model)
+
+        # novelty: unconditioned vs conditioned samples
+        nov_unc = res_unc.get('novel_frac', 0.0)
+        nov_cond = [res_cond[cl].get('novel_frac', 0.0) for cl in cond_labels]
+        # plot novelty bar chart
+        categories_nov = ['Uncond'] + [f'Cond_{cl}' for cl in cond_labels]
+        vals_nov_pct = [nov_unc*100] + [v*100 for v in nov_cond]
+        fig_n, ax_n = plt.subplots(figsize=(8,4))
+        ax_n.bar(categories_nov, vals_nov_pct, color=['gray'] + ['salmon']*len(nov_cond))
+        ax_n.set_ylabel('Novelty (%)')
+        ax_n.set_title(f'{name}: Novelty (rot/flip)')
+        for i, v in enumerate(vals_nov_pct):
+            ax_n.text(i, v, f"{v:.1f}%", ha='center', va='bottom')
+        plt.tight_layout()
+        nov_fig = os.path.join(out_model, f'{name}_novelty.png')
+        fig_n.savefig(nov_fig)
+        plt.close(fig_n)
+        print(f"Saved novelty figure: {nov_fig}")
+
+        # save novelty CSV
+        nov_csv = os.path.join(out_model, f'{name}_novelty.csv')
+        with open(nov_csv, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['scenario', 'novel_frac'])
+            writer.writerow(['uncond', f"{nov_unc:.3f}"])
+            for cl, v in zip(cond_labels, nov_cond):
+                writer.writerow([f'cond_{cl}', f"{v:.3f}"])
+        print(f"Saved novelty CSV: {nov_csv}")
 
 if __name__ == '__main__':
     main()
