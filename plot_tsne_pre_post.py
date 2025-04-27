@@ -109,30 +109,23 @@ def main():
     X_tsne = TSNE(n_components=2).fit_transform(X_pca)
     print("Computed t-SNE embeddings.")
 
-    # Plot 1: living vs death
-    plt.figure(figsize=(6,6))
-    for pp in ['pre','post']:
-        for lb in ['life','death']:
-            idx = [(pp_, lb_) == (pp, lb) for pp_, lb_ in zip(prepost, labels_basic)]
-            plt.scatter(X_tsne[idx,0], X_tsne[idx,1], label=f"{lb}_{pp}", alpha=0.6, s=5)
-    plt.legend()
-    plt.title('t-SNE: Living vs Death (pre vs post)')
-    plt.savefig(os.path.join(args.out_dir, 'tsne_life_death.png'))
-    print(f"Saved living vs death t-SNE to {os.path.join(args.out_dir, 'tsne_life_death.png')}")
-
-    # Plot 2: detailed types
-    plt.figure(figsize=(6,6))
-    types_unique = ['death','still-life','oscillator_p2','other_life']
-    markers = {'pre':'o','post':'x'}
-    for pp in ['pre','post']:
-        for lb in types_unique:
-            idx = [(pp_, lb_) == (pp, lb) for pp_, lb_ in zip(prepost, labels_type)]
-            plt.scatter(X_tsne[idx,0], X_tsne[idx,1], label=f"{lb}_{pp}", marker=markers[pp], alpha=0.6, s=5)
+    # Plot: pre/post clusters by conditioning label
+    plt.figure(figsize=(8,8))
+    conds_labels = [f"cond_{cl}" for cl in args.condition_labels]
+    markers = {'pre': 'o', 'post': 'x'}
+    for cond_str in conds_labels:
+        for pp in ['pre', 'post']:
+            idx = [(pp_, cond_) == (pp, cond_str) for pp_, cond_ in zip(prepost, conds)]
+            plt.scatter(
+                X_tsne[idx,0], X_tsne[idx,1],
+                label=f"{cond_str}_{pp}", marker=markers[pp], alpha=0.6, s=5
+            )
     plt.legend(bbox_to_anchor=(1,1))
-    plt.title('t-SNE: Life Types (pre vs post)')
+    plt.title('t-SNE: Conditioned pre vs post clusters')
     plt.tight_layout()
-    plt.savefig(os.path.join(args.out_dir, 'tsne_life_types.png'))
-    print(f"Saved life types t-SNE to {os.path.join(args.out_dir, 'tsne_life_types.png')}")
+    out_file = os.path.join(args.out_dir, 'tsne_cond_prepost.png')
+    plt.savefig(out_file)
+    print(f"Saved conditioned t-SNE to {out_file}")
 
 if __name__ == '__main__':
     main()
