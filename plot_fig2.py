@@ -23,9 +23,9 @@ def main():
                         help='directory of .npy training patterns')
     parser.add_argument('--checkpoint', type=str, default='finished_models/model_final_random.pt',
                         help='path to trained model checkpoint')
-    parser.add_argument('--timesteps', type=int, default=300,
+    parser.add_argument('--timesteps', type=int, default=200,
                         help='diffusion timesteps')
-    parser.add_argument('--num_samples', type=int, default=4000,
+    parser.add_argument('--num_samples', type=int, default=300,
                         help='number of samples to generate')
     parser.add_argument('--threshold', type=float, default=0.5,
                         help='binarization threshold')
