@@ -78,6 +78,7 @@ def main():
         max_steps=args.timesteps, threshold=args.threshold
     )
     novel_unc = results_unc.get('novel_frac', 0.0)
+    results_cond = {}  # init dict for full conditional results
     novel_by_label = {}
     for cl in args.condition_labels:
         res_c = evaluate_samples(
@@ -85,6 +86,8 @@ def main():
             max_steps=args.timesteps, threshold=args.threshold
         )
         novel_by_label[cl] = res_c.get('novel_frac', 0.0)
+        # store full evaluation results for this condition
+        results_cond[cl] = res_c
     # print novelty rates
     print(f"Novelty fraction — Unconditioned: {novel_unc:.3f}")
     for cl in args.condition_labels:
@@ -128,11 +131,12 @@ def main():
     osc2_cond = {}
     other_cond = {}
     for cl in args.condition_labels:
-        total_cond[cl] = results_unc['total']
-        dead_cond[cl] = results_unc.get('died_out', 0)
+        res_c_full = results_cond[cl]
+        total_cond[cl] = res_c_full['total']
+        dead_cond[cl] = res_c_full.get('died_out', 0)
         alive_cond[cl] = total_cond[cl] - dead_cond[cl]
-        sl_cond[cl] = results_unc.get('still_life', 0)
-        osc2_cond[cl] = results_unc.get('oscillator_p2', 0)
+        sl_cond[cl] = res_c_full.get('still_life', 0)
+        osc2_cond[cl] = res_c_full.get('oscillator_p2', 0)
         other_cond[cl] = alive_cond[cl] - sl_cond[cl] - osc2_cond[cl]
 
     categories = ['Alive', 'Still Life', 'Oscillator P2', 'Other', 'Dead']
