@@ -136,6 +136,39 @@ def main():
             writer.writerow([name, f"{tp:.1f}", f"{gp:.1f}", f"{dp:.1f}"])
     print(f"Saved metrics CSV: {out_csv}")
 
+    # filter out dead category and plot living-only percentages
+    living_categories = categories[:-1]
+    living_train_percents = train_percents[:-1]
+    living_gen_percents = gen_percents[:-1]
+    living_delta_percents = delta_percents[:-1]
+    print("Plotting living-only percentage distributions...")
+    fig, ax = plt.subplots(figsize=(12, 6))
+    x = np.arange(len(living_categories))
+    w = 0.35
+    ax.bar(x - w/2, living_train_percents, w, label='Train', color='skyblue')
+    ax.bar(x + w/2, living_gen_percents,   w, label='Gen',   color='salmon')
+    ax.set_xticks(x)
+    ax.set_xticklabels(living_categories, rotation=45, ha='right')
+    ax.set_ylabel('Percentage (%)')
+    for i, (tp, gp, dp) in enumerate(zip(living_train_percents, living_gen_percents, living_delta_percents)):
+        ax.text(i - w/2, tp, f"{tp:.1f}%", ha='center', va='bottom')
+        ax.text(i + w/2, gp, f"{gp:.1f}%", ha='center', va='bottom')
+        ax.text(i + w/2, gp, f"Δ{dp:.1f}%", ha='center', va='top', color='black')
+    ax.legend()
+    plt.tight_layout()
+    fig_path_living = os.path.join(args.out_dir, 'figure2_percentages_living.png')
+    fig.savefig(fig_path_living)
+    print(f"Saved living-only figure: {fig_path_living}")
+    # save living-only metrics CSV
+    out_csv_living = os.path.join(args.out_dir, 'figure2_metrics_percentages_living.csv')
+    print(f"Writing living-only metrics CSV to: {out_csv_living}")
+    with open(out_csv_living, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['category', 'train_percent', 'gen_percent', 'delta_percent'])
+        for name, tp, gp, dp in zip(living_categories, living_train_percents, living_gen_percents, living_delta_percents):
+            writer.writerow([name, f"{tp:.1f}", f"{gp:.1f}", f"{dp:.1f}"])
+    print(f"Saved living-only metrics CSV: {out_csv_living}")
+
 
 if __name__ == '__main__':
     main()
