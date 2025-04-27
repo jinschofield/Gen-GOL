@@ -81,27 +81,22 @@ def main():
     model.eval()
     diffusion = Diffusion(timesteps=args.timesteps, device=device)
 
-    # sample
-    shape = (args.num_samples, 1, args.grid_size, args.grid_size)
-    with torch.no_grad():
-        x = diffusion.sample(model, shape, c=None)
-    grids = (x.squeeze(1).cpu().numpy() > args.threshold).astype(np.uint8)
-
-    # simulate and classify
+    # sample until 100 examples of each class are collected
     classes = {'still-life': [], 'oscillator_p2': [], 'other': []}
-    histories = []
-    for g in grids:
-        hist = simulate(g, steps=args.timesteps)
-        cat = classify_pattern(hist)
-        if len(classes[cat]) < 100:
-            classes[cat].append(hist)
-        if all(len(classes[c]) >= 100 for c in classes):
-            break
-
-    # warn if any short
-    for c, lst in classes.items():
-        if len(lst) < 100:
-            print(f"Warning: only found {len(lst)} samples for {c}")
+    print("Sampling until 100 examples of each class are found...")
+    while any(len(v) < 100 for v in classes.values()):
+        shape = (args.num_samples, 1, args.grid_size, args.grid_size)
+        with torch.no_grad():
+            x = diffusion.sample(model, shape, c=None)
+        grids = (x.squeeze(1).cpu().numpy() > args.threshold).astype(np.uint8)
+        for g in grids:
+            hist = simulate(g, steps=args.timesteps)
+            cat = classify_pattern(hist)
+            if len(classes[cat]) < 100:
+                classes[cat].append(hist)
+        counts = {k: len(v) for k, v in classes.items()}
+        print(f"Current counts: {counts}")
+    print("Collected 100 samples of each class.")
 
     # save outputs
     # still-life
