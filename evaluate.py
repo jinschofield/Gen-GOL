@@ -50,9 +50,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str, default='./data')
     parser.add_argument('--checkpoint', type=str, required=True)
-    parser.add_argument('--timesteps', type=int, default=300)
+    parser.add_argument('--timesteps', type=int, default=200)
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--num_samples', type=int, default=64)
+    parser.add_argument('--num_samples', type=int, default=100)
     parser.add_argument('--out_dir', type=str, default='./eval_outputs')
     parser.add_argument('--schedule', type=str, default='linear', choices=['linear','cosine'], help='noise schedule')
     parser.add_argument('--sample_method', type=str, default='ancestral', choices=['ancestral','ddim'], help='sampling method')
@@ -67,27 +67,36 @@ def main():
                         help='path to untrained model checkpoint for baseline comparison')
     parser.add_argument('--guidance_scale', type=float, default=1.0, help='classifier-free guidance scale at inference')
     args = parser.parse_args()
+    print(f"Configuration: data_dir={args.data_dir}, checkpoint={args.checkpoint}, timesteps={args.timesteps}, num_samples={args.num_samples}, threshold={args.threshold}, out_dir={args.out_dir}")
 
     threshold = args.threshold
 
     os.makedirs(args.out_dir, exist_ok=True)
+    print(f"Created output directory: {args.out_dir}")
     # load train patterns for novelty
+    print("Loading training patterns...")
     train_patterns = load_train_patterns(args.data_dir)
+    print(f"Loaded {len(train_patterns)} training patterns")
     # prepare model
     # infer grid size from first pattern
     H = train_patterns[0].shape[0]
+    print(f"Loading model from {args.checkpoint} to {args.device}...")
     model = UNet(in_channels=1, base_channels=64, channel_mults=(1,2,4)).to(args.device)
     state = torch.load(args.checkpoint, map_location=args.device)
     model.load_state_dict(state)
     model.eval()
+    print("Model loaded and set to eval mode")
     # diffusion with chosen noise schedule and optional CFG
+    print("Setting up diffusion process...")
     diffusion = Diffusion(timesteps=args.timesteps,
                          device=args.device,
                          schedule=args.schedule,
                          guidance_scale=args.guidance_scale)
+    print(f"Diffusion configured: timesteps={args.timesteps}, schedule={args.schedule}, guidance_scale={args.guidance_scale}")
     # build condition tensor
     c = torch.full((args.num_samples,), args.class_label, device=args.device, dtype=torch.long)
     # sample
+    print("Starting conditional sampling...")
     with torch.no_grad():
         # generate with conditional label
         shape = (args.num_samples, 1, H, H)
@@ -95,6 +104,7 @@ def main():
             samples = diffusion.sample(model, shape, c)
         else:
             samples = diffusion.ddim_sample(model, shape, eta=args.eta, c=c)
+    print("Conditional sampling complete.")
     # clamp outputs to [0,1] for meaningful thresholding
     samples = torch.clamp(samples, 0.0, 1.0)
     # binarize using specified threshold
@@ -126,8 +136,11 @@ def main():
             print(f"Saved {m} died configurations to 'died_samples.png'")
 
     # save grid
+    print("Saving all sample grid...")
     save_grid(bin_samples.cpu().numpy(), os.path.join(args.out_dir, 'samples.png'))
+    print("Saved sample grid to samples.png")
     # evaluate
+    print("Evaluating conditional samples...")
     results = evaluate_samples(samples, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
     # print results
     print("\nTrained+conditioned (samples.png, metrics.txt):")
@@ -139,7 +152,10 @@ def main():
             f.write(f"{k}: {v}\n")
 
     # evaluate trained model without condition
+    print("Starting unconditioned sampling...")
     with torch.no_grad():
+        # generate without conditional label
+        shape = (args.num_samples, 1, H, H)
         if args.sample_method == 'ancestral':
             samples_nc = diffusion.sample(model, shape, c=None)
         else:
@@ -147,6 +163,7 @@ def main():
     samples_nc = torch.clamp(samples_nc, 0.0, 1.0)
     bin_nc = (samples_nc > threshold).float()
     save_grid(bin_nc.cpu().numpy(), os.path.join(args.out_dir, 'samples_no_cond.png'))
+    print("Evaluating unconditioned samples...")
     results_nc = evaluate_samples(samples_nc, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
     print("\nTrained+unconditioned (samples_no_cond.png, metrics_no_cond.txt):")
     for k, v in results_nc.items():
@@ -162,6 +179,7 @@ def main():
 
     # evaluate untrained baseline if provided
     if args.baseline_model:
+        print("Baseline model provided, evaluating untrained baseline...")
         # skip if checkpoint not found
         if not os.path.isfile(args.baseline_model):
             print(f"Baseline model checkpoint '{args.baseline_model}' not found, skipping baseline evaluation.")
@@ -170,12 +188,16 @@ def main():
             base_state = torch.load(args.baseline_model, map_location=args.device)
             base_model.load_state_dict(base_state)
             base_model.eval()
+            print("Starting baseline conditioned sampling...")
             with torch.no_grad():
+                # generate with conditional label
+                shape = (args.num_samples, 1, H, H)
                 if args.sample_method == 'ancestral':
                     base_samples = diffusion.sample(base_model, shape, c)
                 else:
                     base_samples = diffusion.ddim_sample(base_model, shape, eta=args.eta, c=c)
             base_samples = torch.clamp(base_samples, 0.0, 1.0)
+            print("Evaluating baseline conditioned samples...")
             base_results = evaluate_samples(base_samples, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
             print("\nUntrained+conditioned (baseline_samples.png, baseline_metrics.txt):")
             for k, v in base_results.items():
@@ -185,8 +207,10 @@ def main():
                 for k, v in base_results.items():
                     f.write(f"{k}: {v}\n")
 
-            # evaluate untrained model without condition
+            print("Starting baseline unconditioned sampling...")
             with torch.no_grad():
+                # generate without conditional label
+                shape = (args.num_samples, 1, H, H)
                 if args.sample_method == 'ancestral':
                     base_nc = diffusion.sample(base_model, shape, c=None)
                 else:
@@ -194,6 +218,7 @@ def main():
             base_nc = torch.clamp(base_nc, 0.0, 1.0)
             bin_base_nc = (base_nc > threshold).float()
             save_grid(bin_base_nc.cpu().numpy(), os.path.join(args.out_dir, 'baseline_samples_no_cond.png'))
+            print("Evaluating baseline unconditioned samples...")
             base_results_nc = evaluate_samples(base_nc, train_patterns, max_steps=args.timesteps, threshold=args.threshold)
             print("\nUntrained+unconditioned (baseline_samples_no_cond.png, baseline_metrics_no_cond.txt):")
             for k, v in base_results_nc.items():

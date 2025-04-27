@@ -23,20 +23,24 @@ def main():
                         help='directory of .npy training patterns')
     parser.add_argument('--checkpoint', type=str, default='finished_models/model_final_random.pt',
                         help='path to trained model checkpoint')
-    parser.add_argument('--timesteps', type=int, default=300,
+    parser.add_argument('--timesteps', type=int, default=200,
                         help='diffusion timesteps')
-    parser.add_argument('--num_samples', type=int, default=1000,
+    parser.add_argument('--num_samples', type=int, default=100,
                         help='number of samples to generate')
     parser.add_argument('--threshold', type=float, default=0.5,
                         help='binarization threshold')
     parser.add_argument('--out_dir', type=str, default='./figures',
                         help='output directory for figure and metrics')
     args = parser.parse_args()
+    print(f"Configuration: data_dir={args.data_dir}, checkpoint={args.checkpoint}, timesteps={args.timesteps}, num_samples={args.num_samples}, threshold={args.threshold}, out_dir={args.out_dir}")
 
     os.makedirs(args.out_dir, exist_ok=True)
+    print(f"Created output directory: {args.out_dir}")
 
     # load train patterns
+    print("Loading training patterns...")
     train_patterns = load_train_patterns(args.data_dir)
+    print(f"Loaded {len(train_patterns)} training patterns.")
     N_train = len(train_patterns)
     H = train_patterns[0].shape[0]
 
@@ -46,6 +50,7 @@ def main():
         np.stack([p.astype(np.float32) for p in train_patterns])[:,None,:,:],
         dtype=torch.float32
     )
+    print("Computing training metrics...")
     train_results = evaluate_samples(
         train_tensor, train_patterns,
         max_steps=args.timesteps, threshold=args.threshold
@@ -63,9 +68,12 @@ def main():
 
     # sample unconditioned
     shape = (args.num_samples, 1, H, H)
+    print(f"Sampling {args.num_samples} unconditioned samples...")
     with torch.no_grad():
         gen = diffusion.sample(model, shape, c=None)
+    print("Sampling complete.")
     gen = torch.clamp(gen, 0.0, 1.0)
+    print("Computing generated metrics...")
     gen_results = evaluate_samples(
         gen, train_patterns,
         max_steps=args.timesteps, threshold=args.threshold
@@ -92,6 +100,7 @@ def main():
     deltas       = {k: gen_counts[k] - train_counts[k] for k in counts_keys}
 
     # plot absolute counts
+    print("Plotting absolute counts...")
     fig, ax = plt.subplots(figsize=(12, 6))
     x = np.arange(len(counts_keys))
     w = 0.35
@@ -110,17 +119,18 @@ def main():
     plt.tight_layout()
     fig_path = os.path.join(args.out_dir, 'figure2_absolute.png')
     fig.savefig(fig_path)
-    print(f'Saved figure: {fig_path}')
+    print(f"Saved figure: {fig_path}")
 
     # save raw metrics (absolute counts)
     out_csv = os.path.join(args.out_dir, 'figure2_metrics_absolute.csv')
+    print(f"Writing metrics CSV to: {out_csv}")
     import csv
     with open(out_csv, 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['category', 'train_count', 'gen_count', 'delta_count'])
         for k in counts_keys:
             writer.writerow([k, train_counts[k], gen_counts[k], deltas[k]])
-    print(f'Saved metrics: {out_csv}')
+    print(f"Saved metrics CSV: {out_csv}")
 
 
 if __name__ == '__main__':
