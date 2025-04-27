@@ -19,6 +19,15 @@ from models.unet import UNet
 from models.diffusion import Diffusion
 
 
+def parse_label(x):
+    if x.lower() == 'none':
+        return None
+    try:
+        return int(x)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid condition label: {x}")
+
+
 def classify_pattern(grid):
     s = grid.sum()
     if s == 0:
@@ -40,7 +49,7 @@ def main():
     p.add_argument('--num_samples', type=int, default=200)
     p.add_argument('--grid_size', type=int, default=32)
     p.add_argument('--threshold', type=float, default=0.5)
-    p.add_argument('--condition_labels', type=int, nargs='+', default=[None, 0, 1],
+    p.add_argument('--condition_labels', type=parse_label, nargs='+', default=[None, 0, 1],
                    help='labels: None for uncond, then each cond label')
     p.add_argument('--out_dir', type=str, default='./tsne_noise',
                    help='output dir')
