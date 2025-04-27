@@ -25,7 +25,7 @@ def main():
                         help='path to trained model checkpoint')
     parser.add_argument('--timesteps', type=int, default=200,
                         help='diffusion timesteps')
-    parser.add_argument('--num_samples', type=int, default=100,
+    parser.add_argument('--num_samples', type=int, default=4000,
                         help='number of samples to generate')
     parser.add_argument('--threshold', type=float, default=0.5,
                         help='binarization threshold')
@@ -99,37 +99,41 @@ def main():
     train_counts = [train_alive, train_sl, train_osc2, train_other, train_dead]
     gen_counts   = [gen_alive,   gen_sl,   gen_osc2,   gen_other,   gen_dead]
     deltas       = [g - t for t, g in zip(train_counts, gen_counts)]
+    # compute percentages
+    train_percents = [c / total_train * 100.0 for c in train_counts]
+    gen_percents   = [c / total_gen   * 100.0 for c in gen_counts]
+    delta_percents = [gp - tp for tp, gp in zip(train_percents, gen_percents)]
 
-    # plot absolute counts
-    print("Plotting absolute counts...")
+    # plot percentages
+    print("Plotting percentage distributions...")
     fig, ax = plt.subplots(figsize=(12, 6))
     x = np.arange(len(categories))
     w = 0.35
-    ax.bar(x - w/2, train_counts, w, label='Train', color='skyblue')
-    ax.bar(x + w/2, gen_counts,   w, label='Gen',   color='salmon')
+    ax.bar(x - w/2, train_percents, w, label='Train', color='skyblue')
+    ax.bar(x + w/2, gen_percents,   w, label='Gen',   color='salmon')
     ax.set_xticks(x)
     ax.set_xticklabels(categories, rotation=45, ha='right')
-    ax.set_ylabel('Count')
-    # annotate counts and deltas
-    for i, (t, g, d) in enumerate(zip(train_counts, gen_counts, deltas)):
-        ax.text(i - w/2, t, str(t), ha='center', va='bottom')
-        ax.text(i + w/2, g, str(g), ha='center', va='bottom')
-        ax.text(i + w/2, g, f'Δ {d}', ha='center', va='top', color='black')
+    ax.set_ylabel('Percentage (%)')
+    # annotate percentages and deltas
+    for i, (tp, gp, dp) in enumerate(zip(train_percents, gen_percents, delta_percents)):
+        ax.text(i - w/2, tp, f"{tp:.1f}%", ha='center', va='bottom')
+        ax.text(i + w/2, gp, f"{gp:.1f}%", ha='center', va='bottom')
+        ax.text(i + w/2, gp, f"Δ{dp:.1f}%", ha='center', va='top', color='black')
     ax.legend()
     plt.tight_layout()
-    fig_path = os.path.join(args.out_dir, 'figure2_absolute.png')
+    fig_path = os.path.join(args.out_dir, 'figure2_percentages.png')
     fig.savefig(fig_path)
     print(f"Saved figure: {fig_path}")
 
     # save raw metrics (absolute counts)
-    out_csv = os.path.join(args.out_dir, 'figure2_metrics_absolute.csv')
+    out_csv = os.path.join(args.out_dir, 'figure2_metrics_percentages.csv')
     print(f"Writing metrics CSV to: {out_csv}")
     import csv
     with open(out_csv, 'w', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(['category', 'train_count', 'gen_count', 'delta_count'])
-        for name, t, g, d in zip(categories, train_counts, gen_counts, deltas):
-            writer.writerow([name, t, g, d])
+        writer.writerow(['category', 'train_percent', 'gen_percent', 'delta_percent'])
+        for name, tp, gp, dp in zip(categories, train_percents, gen_percents, delta_percents):
+            writer.writerow([name, f"{tp:.1f}", f"{gp:.1f}", f"{dp:.1f}"])
     print(f"Saved metrics CSV: {out_csv}")
 
 
