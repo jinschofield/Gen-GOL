@@ -99,6 +99,7 @@ def main():
     # reduce dims before TSNE
     X_pca = PCA(n_components=50).fit_transform(X)
     X_tsne = TSNE(n_components=2).fit_transform(X_pca)
+    print("Computed t-SNE embeddings.")
 
     # Plot 1: living vs death
     plt.figure(figsize=(6,6))
@@ -109,6 +110,7 @@ def main():
     plt.legend()
     plt.title('t-SNE: Living vs Death (pre vs post)')
     plt.savefig(os.path.join(args.out_dir, 'tsne_life_death.png'))
+    print(f"Saved living vs death t-SNE to {os.path.join(args.out_dir, 'tsne_life_death.png')}")
 
     # Plot 2: detailed types
     plt.figure(figsize=(6,6))
@@ -122,6 +124,7 @@ def main():
     plt.title('t-SNE: Life Types (pre vs post)')
     plt.tight_layout()
     plt.savefig(os.path.join(args.out_dir, 'tsne_life_types.png'))
+    print(f"Saved life types t-SNE to {os.path.join(args.out_dir, 'tsne_life_types.png')}")
 
 if __name__ == '__main__':
     main()
