@@ -18,9 +18,9 @@ from phase_2_conditional_diffusion.label_training_data_32x32 import classify_gri
 
 def main():
     p = argparse.ArgumentParser(description='Natural balanced GoL dataset')
-    p.add_argument('--output_dir', type=str, default='natural_data_32x32',
+    p.add_argument('--output_dir', type=str, default='quota_data_32x32',
                    help='Folder to save .npy patterns')
-    p.add_argument('--label_csv', type=str, default='natural_labels_32x32.csv',
+    p.add_argument('--label_csv', type=str, default='quota_labels_32x32.csv',
                    help='CSV file listing [filepath, category]')
     p.add_argument('--target_count', type=int, default=1000,
                    help='Samples per category for died, still life, oscillator')

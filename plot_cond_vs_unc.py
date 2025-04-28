@@ -7,6 +7,7 @@ import os, argparse, csv
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from models.unet import UNet
 from models.diffusion import Diffusion
 from utils.metrics import evaluate_samples
@@ -102,11 +103,13 @@ def main():
             writer.writerow([f'condition_{cl}', f"{novel_by_label[cl]:.3f}"])
     print(f"Saved novelty metrics CSV: {out_csv}")
     # plot novelty bar chart
+    cmap = cm.get_cmap('tab10')
+    unc_color = 'skyblue'
+    cond_colors = [cmap(i) for i in range(len(args.condition_labels))]
     labels = ['Unconditioned'] + [f'Cond {cl}' for cl in args.condition_labels]
     values = [novel_unc * 100] + [novel_by_label[cl] * 100 for cl in args.condition_labels]
     fig, ax = plt.subplots(figsize=(6,4))
-    colors = ['skyblue'] + ['salmon'] * len(args.condition_labels)
-    ax.bar(labels, values, color=colors)
+    ax.bar(labels, values, color=[unc_color] + cond_colors)
     ax.set_ylabel('Novelty (%)')
     ax.set_title('Novelty Rate')
     for i, v in enumerate(values):
@@ -115,6 +118,34 @@ def main():
     out_fig = os.path.join(args.out_dir, 'cond_vs_unc_novelty.png')
     fig.savefig(out_fig)
     print(f"Saved novelty figure: {out_fig}")
+
+    # compute adherence for conditions
+    adherence = {}
+    for cl in args.condition_labels:
+        if cl == 0:
+            adherence[cl] = results_cond[cl].get('died_out', 0) / results_cond[cl]['total']
+        else:
+            adherence[cl] = (results_cond[cl]['total'] - results_cond[cl].get('died_out', 0)) / results_cond[cl]['total']
+    labels = [f'Cond {cl}' for cl in args.condition_labels]
+    values = [adherence[cl] * 100 for cl in args.condition_labels]
+    fig, ax = plt.subplots(figsize=(6,4))
+    ax.bar(labels, values, color='green')
+    ax.set_ylabel('Adherence (%)')
+    ax.set_title('Condition Adherence Rate')
+    for i, v in enumerate(values):
+        ax.text(i, v, f"{v:.1f}%", ha='center', va='bottom')
+    plt.tight_layout()
+    out_fig_ad = os.path.join(args.out_dir, 'cond_vs_unc_adherence.png')
+    fig.savefig(out_fig_ad)
+    print(f"Saved adherence figure: {out_fig_ad}")
+    # save adherence CSV
+    out_csv_ad = os.path.join(args.out_dir, 'cond_vs_unc_adherence.csv')
+    with open(out_csv_ad, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['condition', 'adherence_frac'])
+        for cl in args.condition_labels:
+            writer.writerow([f'condition_{cl}', f"{adherence[cl]:.3f}"])
+    print(f"Saved adherence metrics CSV: {out_csv_ad}")
 
     # compute counts
     total_unc = results_unc['total']
@@ -155,9 +186,9 @@ def main():
     fig, ax = plt.subplots(figsize=(10,6))
     x = np.arange(len(categories))
     w = 0.35
-    ax.bar(x - w/2, perc_unc, w, label='Unconditioned', color='skyblue')
+    ax.bar(x - w/2, perc_unc, w, label='Unconditioned', color=unc_color)
     for i, cl in enumerate(args.condition_labels):
-        ax.bar(x + w/2 + i*w, perc_cond[cl], w, label=f'Conditioned {cl}', color='salmon')
+        ax.bar(x + w/2 + i*w, perc_cond[cl], w, label=f'Conditioned {cl}', color=cond_colors[i])
     ax.set_xticks(x)
     ax.set_xticklabels(categories, rotation=45, ha='right')
     ax.set_ylabel('Percentage (%)')
@@ -187,9 +218,9 @@ def main():
         perc_cond_live[cl] = perc_cond[cl][:-1]
     fig, ax = plt.subplots(figsize=(10,6))
     x = np.arange(len(living_cats))
-    ax.bar(x - w/2, perc_unc_live, w, label='Unconditioned', color='skyblue')
+    ax.bar(x - w/2, perc_unc_live, w, label='Unconditioned', color=unc_color)
     for i, cl in enumerate(args.condition_labels):
-        ax.bar(x + w/2 + i*w, perc_cond_live[cl], w, label=f'Conditioned {cl}', color='salmon')
+        ax.bar(x + w/2 + i*w, perc_cond_live[cl], w, label=f'Conditioned {cl}', color=cond_colors[i])
     ax.set_xticks(x)
     ax.set_xticklabels(living_cats, rotation=45, ha='right')
     ax.set_ylabel('Percentage (%)')

@@ -63,6 +63,7 @@ def main():
     fig_path = os.path.join(args.out_dir, 'figure8_class_embedding_similarity.png')
     fig.savefig(fig_path)
     print(f"Saved figure: {fig_path}")
+    plt.show()
 
     # save CSV
     import csv

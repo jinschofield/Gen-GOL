@@ -1,4 +1,0 @@
-scenario,live,dead,pct_live,pct_dead
-uncond,442,558,44.2,55.800000000000004
-cond_live,491,509,49.1,50.9
-cond_dead,262,738,26.200000000000003,73.8

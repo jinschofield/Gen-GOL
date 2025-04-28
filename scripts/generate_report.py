@@ -150,7 +150,7 @@ if __name__=='__main__':
     parser.add_argument('--random_model',default='finished_models/model_final_random.pt')
     parser.add_argument('--quota_model',default='finished_models/model_final_quota.pt')
     parser.add_argument('--random_data',default='phase_2_conditional_diffusion/random_data_32x32')
-    parser.add_argument('--quota_data',default='phase_2_conditional_diffusion/natural_data_32x32')
+    parser.add_argument('--quota_data',default='phase_2_conditional_diffusion/quota_data_32x32')
     parser.add_argument('--num_samples',type=int,default=1000)
     parser.add_argument('--timesteps',type=int,default=200)
     parser.add_argument('--schedule',default='cosine')
